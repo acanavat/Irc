@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/14 14:20:24 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/14 17:51:58 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -368,7 +368,7 @@ int main(int argc, char **argv)
     }
 
 	client.push_back(create_pollfd(server_fd, (POLLIN|POLLOUT), 0));
-	Client *fake_client = new Client();
+/*	Client *fake_client = new Client();
 	//fake_client->setNickname("fake_client");
 	Client *fake = new Client();
 	//fake->setNickname("fake");
@@ -393,7 +393,7 @@ int main(int argc, char **argv)
 		channel_list["channel1"]->setTopicswitch(true);
 		channel_list["channel1"]->setTopic("new topic", *fake);
 		channel_list["channel1"]->getTopic();
-		return 1;
+		return 1;*/
 	while (1)
 	{
 		if (poll(&(*client.begin()), client.size(), 0) < 0)
@@ -434,7 +434,6 @@ int main(int argc, char **argv)
 				}
 				if (n > 0)
 				{
-					std::cout << "Message : " << buffer;
 					client_map[(*it).fd]->waitingRoom += std::string(buffer);
 					if (strchr(client_map[(*it).fd]->waitingRoom.c_str(), '\n'))
 					{
@@ -456,8 +455,46 @@ int main(int argc, char **argv)
 
 void rattrapeReddy(std::string msg, Client *client)
 {
-	std::cout << "message recu : " << msg << std::endl;
-	std::cout << "testesttest" << std::endl;
-	(void)client;
-	(void)msg;
+	try
+	{
+		Parser(msg);
+		(void)client;
+	}
+	catch (std::string msg)
+	{
+		std::cerr << msg << std::endl;
+	}
+}
+
+void	Parser(std::string cmd) //isole les commandes avec les arguments
+{
+	int y = 0;
+	for (int i = 0; cmd[i]; i++)
+	{
+		if (cmd[i] == '\n' && cmd[i-1] == '\r')
+		{
+			CmdParser(cmd.substr(y, i - y));
+			y = i + 1;
+		}
+	}
+}
+
+void	CmdParser(std::string cmd)
+{
+	cmd = cmd.erase(cmd.size() - 1);
+	std::cout << "PARSED CMD = " << cmd << std::endl;
+	if (cmd.find(' ') == std::string::npos)
+	{
+		const char *msg = "CMD is missing arguments \n";
+		throw (msg);
+	}
+
+	std::stringstream ss(cmd);
+	std::string word;
+	while (!ss.eof())
+	{
+		getline(ss, word, ' ');
+		if (word == "CAP")
+			std::cout << "IGNORE CAP LS" << std::endl;
+	}
 }
