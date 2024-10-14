@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2024/09/12 17:14:15 by acanavat         ###   ########.fr       */
+/*   Updated: 2024/10/14 14:20:24 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -457,6 +457,7 @@ int main(int argc, char **argv)
 void rattrapeReddy(std::string msg, Client *client)
 {
 	std::cout << "message recu : " << msg << std::endl;
+	std::cout << "testesttest" << std::endl;
 	(void)client;
 	(void)msg;
 }
