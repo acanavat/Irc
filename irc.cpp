@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/14 17:51:58 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/15 17:05:57 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -286,7 +286,6 @@ void Channel::msgChannel(Client sender, std::string msg)
 			this->clientList[x]->sendMsg(msg);
 	}
 }
-
 void Channel::leaveChannel(Client leave)
 {
 
@@ -342,7 +341,7 @@ int main(int argc, char **argv)
 	{
 		return 1;
 	}
-    std::string password = argv[2];  
+    assword = argv[2];  
 	port = atoi(argv[1]);
 	server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (server_fd < 0)
@@ -457,8 +456,7 @@ void rattrapeReddy(std::string msg, Client *client)
 {
 	try
 	{
-		Parser(msg);
-		(void)client;
+		Parser(msg, client);
 	}
 	catch (std::string msg)
 	{
@@ -466,20 +464,20 @@ void rattrapeReddy(std::string msg, Client *client)
 	}
 }
 
-void	Parser(std::string cmd) //isole les commandes avec les arguments
+void	Parser(std::string cmd, Client *client) //isole les commandes avec les arguments
 {
 	int y = 0;
 	for (int i = 0; cmd[i]; i++)
 	{
 		if (cmd[i] == '\n' && cmd[i-1] == '\r')
 		{
-			CmdParser(cmd.substr(y, i - y));
+			CmdParser(cmd.substr(y, i - y), client); 
 			y = i + 1;
 		}
 	}
 }
 
-void	CmdParser(std::string cmd)
+void	CmdParser(std::string cmd, Client *client)
 {
 	cmd = cmd.erase(cmd.size() - 1);
 	std::cout << "PARSED CMD = " << cmd << std::endl;
@@ -491,10 +489,25 @@ void	CmdParser(std::string cmd)
 
 	std::stringstream ss(cmd);
 	std::string word;
+	std::vector<std::string> cmdVec;
 	while (!ss.eof())
 	{
 		getline(ss, word, ' ');
-		if (word == "CAP")
-			std::cout << "IGNORE CAP LS" << std::endl;
+		cmdVec.push_back(word); //save la ligne de cmd dans un vec pour easier handling
 	}
+	if (cmdVec[0] == "CAP")
+		std::cout << "IGNORE CAP LS" << std::endl;
+	if (cmdVec[0] == "PASS")
+		client->FuncPass(cmdVec);
+	if (cmdVec[0] == "NICK")
+		client->setNickname(cmdVec[1]);
+	//if (cmdVec[0] == "USER")
+}
+
+void	Client::FuncPass(std::vector<std::string> vec)
+{
+	if (vec[1] == assword)
+		std::cout << "good password" << std::endl;
+	else
+		std::cout << "bad password" << std::endl;
 }
