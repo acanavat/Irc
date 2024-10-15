@@ -32,11 +32,17 @@ class Client
 	~Client();
 	void setFd(int new_fd);
 	int getFd() const;
+
 	std::string waitingRoom;
 	bool operator==(const Client &first);
 	bool operator!=(const Client &first);
+
 	std::string getNickname() const;
 	void setNickname(std::string newNickname);
+
+	std::string getUsername() const;
+	void setUsername(std::string newUsername);
+	
 	void sendMsg(std::string msg);
 	private :
 	std::string username;

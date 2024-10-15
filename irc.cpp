@@ -38,7 +38,15 @@ std::string Client::getNickname() const
 {
 	return  this->nickname;
 }
+std::string getUsername() const
+{
+	return this->username;
+}
 
+void setUsername(std::string newUsername)
+{
+	this->username = newUsername;
+}
 int Client::getFd() const
 {
 	return (this->fd);
