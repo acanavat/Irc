@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2024/09/30 15:56:34 by acanavat         ###   ########.fr       */
+/*   Updated: 2024/10/14 17:01:02 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <poll.h>
 #include <vector>
+#include <sstream>
 #include <map>
 #define BUFFER_SIZE 1024
 
@@ -101,5 +102,7 @@ class Channel
 	bool cmdi;
 };
 
-void rattrapeReddy(std::string msg, Client *client);
+void	CmdParser(std::string cmd);
+void	Parser(std::string cmd);
+void	rattrapeReddy(std::string msg, Client *client);
 #endif 
