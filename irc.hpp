@@ -34,11 +34,17 @@ class Client
 	~Client();
 	void setFd(int new_fd);
 	int getFd() const;
+
 	std::string waitingRoom;
 	bool operator==(const Client &first);
 	bool operator!=(const Client &first);
+
 	std::string getNickname() const;
 	void setNickname(std::string newNickname);
+
+	std::string getUsername() const;
+	void setUsername(std::string newUsername);
+	
 	void sendMsg(std::string msg);
 	void FuncPass(std::vector<std::string> vec);
 	private :
@@ -88,10 +94,14 @@ class Channel
 
 	void setTopicswitch(bool new_switch);
 	bool getTopicswitch();
+
+	void setCmdi(Client client,bool cmd);
+	bool getCmdi();
 	private :
 	std::vector<Client *> clientList;
 	std::vector<Client *> clientOperator;
 	std::vector<Client *> clientCreator;
+	std::vector<Client *> clientInvitation;
 	std::string shortName;
 	bool cmdL;
 	int limitL;
@@ -99,6 +109,7 @@ class Channel
 	bool mdp;
 	std::string topic;
 	bool topic_switch;
+	bool cmdi;
 };
 
 void	CmdParser(std::string cmd, Client *client);
