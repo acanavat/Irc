@@ -38,12 +38,12 @@ std::string Client::getNickname() const
 {
 	return  this->nickname;
 }
-std::string getUsername() const
+std::string Client::getUsername() const
 {
 	return this->username;
 }
 
-void setUsername(std::string newUsername)
+void Client::setUsername(std::string newUsername)
 {
 	this->username = newUsername;
 }
