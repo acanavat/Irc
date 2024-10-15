@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/14 17:01:02 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/15 16:30:59 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,8 @@
 #include <sstream>
 #include <map>
 #define BUFFER_SIZE 1024
+
+std::string assword;
 
 class Client
 {
@@ -44,10 +46,12 @@ class Client
 	void setUsername(std::string newUsername);
 	
 	void sendMsg(std::string msg);
+	void FuncPass(std::vector<std::string> vec);
 	private :
 	std::string username;
 	std::string nickname;
 	int fd;
+
 };
 
 class Channel
@@ -108,7 +112,7 @@ class Channel
 	bool cmdi;
 };
 
-void	CmdParser(std::string cmd);
-void	Parser(std::string cmd);
+void	CmdParser(std::string cmd, Client *client);
+void	Parser(std::string cmd, Client *client);
 void	rattrapeReddy(std::string msg, Client *client);
 #endif 
