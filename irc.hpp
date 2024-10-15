@@ -83,10 +83,14 @@ class Channel
 
 	void setTopicswitch(bool new_switch);
 	bool getTopicswitch();
+
+	void setCmdi(Client client,bool cmd);
+	bool getCmdi();
 	private :
 	std::vector<Client *> clientList;
 	std::vector<Client *> clientOperator;
 	std::vector<Client *> clientCreator;
+	std::vector<Client *> clientInvitation;
 	std::string shortName;
 	bool cmdL;
 	int limitL;
@@ -94,6 +98,7 @@ class Channel
 	bool mdp;
 	std::string topic;
 	bool topic_switch;
+	bool cmdi;
 };
 
 void rattrapeReddy(std::string msg, Client *client);

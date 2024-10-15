@@ -62,6 +62,7 @@ Channel::Channel()
 	this->cmdL = false;
 	this->mdp = false;
 	this->topic_switch = false;
+	this->cmdi = false;
 }
 Channel::~Channel()
 {
@@ -224,6 +225,23 @@ void Channel::setTopicswitch(bool new_switch)
 bool Channel::getTopicswitch()
 {
 	return this->topic_switch;
+}
+void Channel::setCmdi(Client client, bool cmd)
+{
+	for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
+	{
+		if (*(*it) == client)
+		{
+			this->cmdi = cmd;
+			this->clientInvitation.push_back(&client);
+			return ;
+		}
+	}
+}
+bool Channel::getCmdi()
+{
+
+	return this->cmdi;
 }
 pollfd create_pollfd(int fd, short events, short revents)
 {
