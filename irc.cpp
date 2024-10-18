@@ -6,18 +6,25 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/15 17:05:57 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/16 19:08:48 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "irc.hpp"
 
+
 Client::Client()
 {
 	this->fd = -1;
-	this->username = "default";
 	this->nickname = "default";
 	this->waitingRoom = "";
+	this->_passBool = false;
+	this->_userBool = false;
+	this->_nickBool = false;
+	this->_user = "default";
+	this->_mode1 = "default";
+	this->_mode2 = "default";
+	this->_realname = "default";
 }
 
 Client::~Client()
@@ -51,6 +58,7 @@ int Client::getFd() const
 {
 	return (this->fd);
 }
+
 bool Client::operator==(const Client &first)
 {
 	if (this->nickname == first.getNickname() && this->fd == first.getFd())
@@ -179,7 +187,6 @@ void Channel::addClientoperator(Client *newClient)
 	if (!newClient)
 		return ;
 	for (;it != this->clientOperator.end() && (*it) != newClient; it++);
-	
 	if (it != this->clientOperator.end() && (*it) == newClient)
 		return ;
 	this->clientOperator.push_back(newClient);
@@ -300,6 +307,7 @@ void joinChannel(Client *join_channel, Channel *to_edit)
 
 void Client::sendMsg(std::string msg)
 {
+	msg += "\n";
 	write(this->fd, msg.c_str(), msg.size());
 }
 
@@ -363,6 +371,7 @@ int main(int argc, char **argv)
     std::vector<pollfd> client;
     std::map<int, Client*> client_map;
     std::map<std::string, Channel*> channel_list;
+	Server server;
 	if (argc < 3)
 	{
 		return 1;
@@ -410,7 +419,7 @@ int main(int argc, char **argv)
 		//printChannel(channel_list);
 		std::map<std::string, Channel*>::iterator ite = channel_list.begin();
 		printclientList(*(*ite).second);
-		channel_list["channel1"]->leaveChannel(*fake);
+		channel_list["channclient->el1"]->leaveChannel(*fake);
 		printclientList(*(*ite).second);
 		channel_list["channel1"]->setCmdk("ZOZ");
 		channel_list["channel1"]->deleteMdp();
@@ -445,6 +454,7 @@ int main(int argc, char **argv)
 				Client *new_client = new(Client);
 				new_client->setFd(new_socket);
 				client_map[new_socket] = new_client;
+				//afficher ce msg only when USER NICK PASS valides
 				send(new_socket, "Bienvenue sur mon serveur\n", 26, 0);
 				break ; 
 			}
@@ -462,7 +472,7 @@ int main(int argc, char **argv)
 					client_map[(*it).fd]->waitingRoom += std::string(buffer);
 					if (strchr(client_map[(*it).fd]->waitingRoom.c_str(), '\n'))
 					{
-						rattrapeReddy(client_map[(*it).fd]->waitingRoom, client_map[(*it).fd]);
+						server.rattrapeReddy(client_map[(*it).fd]->waitingRoom, client_map[(*it).fd]);
 						client_map[(*it).fd]->waitingRoom = "";
 					}
 				}	
@@ -478,7 +488,16 @@ int main(int argc, char **argv)
 	}
 }
 
-void rattrapeReddy(std::string msg, Client *client)
+Server::Server() //Toute les COMMANDES a gerer = sous forme de CLASS in here arigato gozxaimaumsuiao
+{
+	this->_cmd.push_back(new FuncPass());
+}
+
+Server::~Server()
+{
+}
+
+void	Server::rattrapeReddy(std::string msg, Client *client)
 {
 	try
 	{
@@ -490,7 +509,7 @@ void rattrapeReddy(std::string msg, Client *client)
 	}
 }
 
-void	Parser(std::string cmd, Client *client) //isole les commandes avec les arguments
+void	Server::Parser(std::string cmd, Client *client) //isole les commandes avec les arguments
 {
 	int y = 0;
 	for (int i = 0; cmd[i]; i++)
@@ -503,7 +522,7 @@ void	Parser(std::string cmd, Client *client) //isole les commandes avec les argu
 	}
 }
 
-void	CmdParser(std::string cmd, Client *client)
+void	Server::CmdParser(std::string cmd, Client *client)
 {
 	cmd = cmd.erase(cmd.size() - 1);
 	std::cout << "PARSED CMD = " << cmd << std::endl;
@@ -521,19 +540,122 @@ void	CmdParser(std::string cmd, Client *client)
 		getline(ss, word, ' ');
 		cmdVec.push_back(word); //save la ligne de cmd dans un vec pour easier handling
 	}
-	if (cmdVec[0] == "CAP")
-		std::cout << "IGNORE CAP LS" << std::endl;
-	if (cmdVec[0] == "PASS")
-		client->FuncPass(cmdVec);
-	if (cmdVec[0] == "NICK")
-		client->setNickname(cmdVec[1]);
-	//if (cmdVec[0] == "USER")
+	whichCmd(cmdVec, client);
 }
 
-void	Client::FuncPass(std::vector<std::string> vec)
+void	Server::whichCmd(std::vector<std::string> vec, Client *client)
+{
+	for(std::list<Acommand*>::iterator it = _cmd.begin(); it != _cmd.end(); it++) //on parcours toute la liste de CMD in class Server
+	{
+		Acommand *cmd = *it;
+		if (cmd->getName() == vec[0]) //check if CMD actuel = CMD rentree par client
+			cmd->exec(this, client, vec);
+	}
+	/*
+	if (vec[0] == "CAP" && vec[1] != "END")
+		client->sendMsg(": CAP * LS :");
+	if (vec[0] == "PASS")
+		client->funcPass(vec);
+	if (vec[0] == "NICK")
+		client->funcNick(vec[1]);
+	if (vec[0] == "USER")
+		client->funcUser(vec);
+	if (vec[0] == "PING")
+		client->sendMsg(":server PONG :" + client->getNickname());
+	if (vec[0] == "PRIVMSG")
+		client->funcPrivMsg(vec);*/
+}
+
+/*
+void	Client::funcPass(std::vector<std::string> vec)
 {
 	if (vec[1] == assword)
-		std::cout << "good password" << std::endl;
+	{
+		this->sendMsg("Good password");
+		this->_passBool = true;
+	}
 	else
-		std::cout << "bad password" << std::endl;
+	{
+		this->sendMsg("Bad password");
+	}
+	tryLogin();
+}
+*/
+
+void	Client::funcUser(std::vector<std::string> vec)
+{
+	//check for 4 elements rentres sinon CMD not accepted
+	vec[4].erase(0, 1);
+	if (vec.size() > 4)
+	{
+		std::vector<std::string>::iterator it = vec.begin() + 5;
+		for(; it != vec.end(); it++)
+		{
+			vec[4] += " ";
+			vec[4] += *it;
+		}
+	}
+
+	this->_user = vec[1];
+	this->_mode1 = vec[2];
+	this->_mode2 = vec[3];
+	this->_realname = vec[4];
+	this->_userBool = true;
+	tryLogin();
+}
+
+void	Client::funcNick(std::string nick)
+{
+	this->nickname = nick;
+	this->_nickBool = true;
+	tryLogin();
+}
+
+void Client::setPass(bool caca)
+{
+	this->_passBool = caca;
+}
+
+void	Client::tryLogin()
+{
+	if (_userBool && _nickBool && _passBool)
+		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _user + "@localhost");
+}
+
+Acommand::Acommand(std::string name)
+{
+	_name = name;
+}
+
+Acommand::~Acommand()
+{
+}
+
+std::string	Acommand::getName()
+{
+	return (_name);
+}
+
+FuncPass::FuncPass(): Acommand("PASS") //CHAQUE COMMANDE HERITE DU CONSTRUCT ACOMMAND WITH SON NOM
+{
+}
+
+FuncPass::~FuncPass()
+{
+}
+
+
+void	FuncPass::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	(void)serv;
+	if (vec[1] == assword)
+	{
+		client->sendMsg("Good password");
+		client->setPass(true);
+	}
+	else
+	{
+		client->sendMsg("Bad password");
+	}
+	client->tryLogin();
 }
