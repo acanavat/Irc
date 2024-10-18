@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/15 16:30:59 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/16 19:06:28 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,7 @@
 #include <vector>
 #include <sstream>
 #include <map>
+#include <list>
 #define BUFFER_SIZE 1024
 
 std::string assword;
@@ -40,12 +41,22 @@ class Client
 	std::string getNickname() const;
 	void setNickname(std::string newNickname);
 	void sendMsg(std::string msg);
-	void FuncPass(std::vector<std::string> vec);
+	void funcPass(std::vector<std::string> vec);
+	void funcNick(std::string nick);
+	void funcUser(std::vector<std::string> vec);
+	void tryLogin();
+	void setPass(bool caca);
+	bool getPass();
 	private :
-	std::string username;
 	std::string nickname;
 	int fd;
-
+	std::string _user;
+	std::string _mode1;
+	std::string _mode2;
+	std::string _realname;
+	bool _passBool;
+	bool _nickBool;
+	bool _userBool;
 };
 
 class Channel
@@ -101,7 +112,44 @@ class Channel
 	bool topic_switch;
 };
 
-void	CmdParser(std::string cmd, Client *client);
-void	Parser(std::string cmd, Client *client);
-void	rattrapeReddy(std::string msg, Client *client);
+class	Acommand; //cringe
+
+class	Server
+{
+	private:
+	std::list<Acommand*> _cmd;
+	public:
+	Server();
+	~Server();
+
+	void	rattrapeReddy(std::string msg, Client *client);
+	void	CmdParser(std::string cmd, Client *client);
+	void	Parser(std::string cmd, Client *client);
+	void	whichCmd(std::vector<std::string> vec, Client *client);
+};
+
+class	Acommand
+{
+	private:
+	std::string _name;
+	public:
+	Acommand(std::string name);
+	virtual ~Acommand();
+
+	std::string	getName();
+	virtual void		exec(Server *serv, Client *client, std::vector<std::string> vec) const = 0;
+};
+
+class	FuncPass : public Acommand
+{
+	private:
+	public:
+	FuncPass();
+	~FuncPass();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+
+};
+
+
 #endif 
