@@ -134,19 +134,19 @@ void Channel::setTopic(std::string new_topic, Client topic_client)
 {
 	if (!getTopicswitch())
 	{
-	for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
-	{
-		if (*(*it) == topic_client)
+		for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
 		{
-			std::cout << "topic changed by " << topic_client.getNickname() << std::endl;
-			this->topic = new_topic;
-			return ;
+			if (*(*it) == topic_client)
+			{
+				std::cout << "topic changed by " << topic_client.getNickname() << std::endl;
+				this->topic = new_topic;
+				return ;
+			}
 		}
-	}
 	}
 	else
 		this->topic = new_topic;
-	topic_client.sendMsg("you don't have permission for this\n");
+	topic_client.sendMsg("you don't have permission for this");
 }
 
 std::vector<Client *> Channel::getClientlist()
@@ -475,6 +475,7 @@ int main(int argc, char **argv)
 				if (n > 0)
 				{
 					client_map[(*it).fd]->waitingRoom += std::string(buffer);
+					std::cout << "client_map[(*it).fd]->waitingRoom : " << client_map[(*it).fd]->waitingRoom << std::endl;
 					if (strchr(client_map[(*it).fd]->waitingRoom.c_str(), '\n'))
 					{
 						server.rattrapeReddy(client_map[(*it).fd]->waitingRoom, client_map[(*it).fd]);
