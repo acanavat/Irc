@@ -120,19 +120,19 @@ void Channel::setTopic(std::string new_topic, Client topic_client)
 {
 	if (!getTopicswitch())
 	{
-	for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
-	{
-		if (*(*it) == topic_client)
+		for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
 		{
-			std::cout << "topic changed by " << topic_client.getNickname() << std::endl;
-			this->topic = new_topic;
-			return ;
+			if (*(*it) == topic_client)
+			{
+				std::cout << "topic changed by " << topic_client.getNickname() << std::endl;
+				this->topic = new_topic;
+				return ;
+			}
 		}
-	}
 	}
 	else
 		this->topic = new_topic;
-	topic_client.sendMsg("you don't have permission for this\n");
+	topic_client.sendMsg("you don't have permission for this");
 }
 
 std::vector<Client *> Channel::getClientlist()
@@ -285,7 +285,6 @@ void destroyChannel(std::string channel_name, std::map<std::string, Channel*> &c
 	}
 }
 
-
 void joinChannel(Client *join_channel, Channel *to_edit)
 {
 	if (!(to_edit->getCmdl()))
@@ -300,7 +299,8 @@ void joinChannel(Client *join_channel, Channel *to_edit)
 
 void Client::sendMsg(std::string msg)
 {
-	write(this->fd, msg.c_str(), msg.size());
+	msg += "\n";
+	write(this->fd, msg.c_str(), msg.length());
 }
 
 void Channel::msgChannel(Client sender, std::string msg)
@@ -445,7 +445,7 @@ int main(int argc, char **argv)
 				Client *new_client = new(Client);
 				new_client->setFd(new_socket);
 				client_map[new_socket] = new_client;
-				send(new_socket, "Bienvenue sur mon serveur\n", 26, 0);
+				new_client->sendMsg("Bienvenue sur mon serveur");
 				break ; 
 			}
 			else
@@ -460,8 +460,10 @@ int main(int argc, char **argv)
 				if (n > 0)
 				{
 					client_map[(*it).fd]->waitingRoom += std::string(buffer);
+					std::cout << "client_map[(*it).fd]->waitingRoom : " << client_map[(*it).fd]->waitingRoom << std::endl;
 					if (strchr(client_map[(*it).fd]->waitingRoom.c_str(), '\n'))
 					{
+						std::cout << "sending client_map[(*it).fd]->waitingRoom : " << client_map[(*it).fd]->waitingRoom << std::endl;
 						rattrapeReddy(client_map[(*it).fd]->waitingRoom, client_map[(*it).fd]);
 						client_map[(*it).fd]->waitingRoom = "";
 					}
@@ -532,8 +534,12 @@ void	CmdParser(std::string cmd, Client *client)
 
 void	Client::FuncPass(std::vector<std::string> vec)
 {
+
 	if (vec[1] == assword)
+	{
+		this->sendMsg("hello\n");
 		std::cout << "good password" << std::endl;
+	}
 	else
 		std::cout << "bad password" << std::endl;
 }
