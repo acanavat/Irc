@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/16 19:06:28 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/21 17:18:13 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,22 +41,20 @@ class Client
 	bool operator!=(const Client &first);
 
 	std::string getNickname() const;
-	void setNickname(std::string newNickname);
 
 	std::string getUsername() const;
-	void setUsername(std::string newUsername);
 	
 	void sendMsg(std::string msg);
 	void funcPass(std::vector<std::string> vec);
 	void funcNick(std::string nick);
 	void funcUser(std::vector<std::string> vec);
 	void tryLogin();
-	void setPass(bool caca);
-	bool getPass();
+	void boolSetter(int i, bool caca); //0=pass, 1=nick, 2=user
+	void stringSetter(int i, std::string neww); //0=nick, 1=user, 2=mode1, 3=mode2, 4=realname
 	private :
-	std::string nickname;
 	int fd;
-	std::string _user;
+	std::string nickname;
+	std::string _username;
 	std::string _mode1;
 	std::string _mode2;
 	std::string _realname;
@@ -123,7 +121,7 @@ class Channel
 	bool cmdi;
 };
 
-class	Acommand; //cringe
+class	Acommand; //cringe (defined here pcq class Server needs Acommand, but Acommand needs class Server)
 
 class	Server
 {
@@ -151,6 +149,16 @@ class	Acommand
 	virtual void		exec(Server *serv, Client *client, std::vector<std::string> vec) const = 0;
 };
 
+class	FuncCap : public Acommand
+{
+	private:
+	public:
+	FuncCap();
+	~FuncCap();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+};
+
 class	FuncPass : public Acommand
 {
 	private:
@@ -162,5 +170,34 @@ class	FuncPass : public Acommand
 
 };
 
+class	FuncNick : public Acommand
+{
+	private:
+	public:
+	FuncNick();
+	~FuncNick();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+};
+
+class	FuncUser : public Acommand
+{
+	private:
+	public:
+	FuncUser();
+	~FuncUser();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+};
+
+class	FuncPing : public Acommand
+{
+	private:
+	public:
+	FuncPing();
+	~FuncPing();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+};
 
 #endif 
