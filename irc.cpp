@@ -29,6 +29,7 @@ Client::Client()
 
 Client::~Client()
 {
+	
 }
 
 void Client::setFd(int new_fd)
