@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/21 17:18:13 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/22 15:01:56 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -200,4 +200,13 @@ class	FuncPing : public Acommand
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
 };
 
-#endif 
+class	FuncPrivMsg : public Acommand
+{
+	private:
+	public:
+	FuncPrivMsg();
+	~FuncPrivMsg();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+};
+#endif

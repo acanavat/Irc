@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/21 17:22:12 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/22 14:59:44 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -475,7 +475,6 @@ int main(int argc, char **argv)
 				if (n > 0)
 				{
 					client_map[(*it).fd]->waitingRoom += std::string(buffer);
-					std::cout << "client_map[(*it).fd]->waitingRoom : " << client_map[(*it).fd]->waitingRoom << std::endl;
 					if (strchr(client_map[(*it).fd]->waitingRoom.c_str(), '\n'))
 					{
 						server.rattrapeReddy(client_map[(*it).fd]->waitingRoom, client_map[(*it).fd]);
@@ -501,6 +500,7 @@ Server::Server() //Toute les COMMANDES a gerer = sous forme de CLASS in here ari
 	this->_cmd.push_back(new FuncNick());
 	this->_cmd.push_back(new FuncUser());
 	this->_cmd.push_back(new FuncPing());
+	//this->_cmd.push_back(new FuncPrivMsg());
 }
 
 Server::~Server()
@@ -563,8 +563,6 @@ void	Server::whichCmd(std::vector<std::string> vec, Client *client)
 			cmd->exec(this, client, vec);
 	}
 	/*
-	if (vec[0] == "CAP" && vec[1] != "END")
-		client->sendMsg(": CAP * LS :");
 	if (vec[0] == "PRIVMSG")
 		client->funcPrivMsg(vec);*/
 }
@@ -704,4 +702,20 @@ void	FuncPing::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	(void)serv;
 	(void)vec;
 	client->sendMsg(":server PONG :" + client->getNickname());
+}
+
+//////////////// PRIVMSG ////////////////
+FuncPrivMsg::FuncPrivMsg(): Acommand("PRIVMSG")
+{
+}
+
+FuncPrivMsg::~FuncPrivMsg()
+{
+}
+
+void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	(void)serv;
+	(void)client;
+	(void)vec;
 }
