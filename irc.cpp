@@ -147,7 +147,7 @@ void Channel::setTopic(std::string new_topic, Client topic_client)
 	}
 	else
 		this->topic = new_topic;
-	topic_client.sendMsg("you don't have permission for this");
+	topic_client.sendMsg("you don't have permission for this", -1);
 }
 
 std::vector<Client *> Channel::getClientlist()
@@ -311,19 +311,25 @@ void joinChannel(Client *join_channel, Channel *to_edit)
 		std::cout << "serveur full" << std::endl;
 }
 
-void Client::sendMsg(std::string msg)
+void Client::sendMsg(std::string msg, int private_msg)
 {
 	msg += "\n";
-	write(this->fd, msg.c_str(), msg.size());
+	(void)private_msg;
+	if (private_msg == -1) 
+		write(this->fd, msg.c_str(), msg.size());
+	else
+		write(private_msg, msg.c_str(), msg.size());
 }
 
 void Channel::msgChannel(Client sender, std::string msg)
 {
 	size_t x = 0;
+	msg += "\n";
+
 	for (;this->clientList.size() >= x; x++)
 	{
 		if (*this->clientList[x] != sender)
-			this->clientList[x]->sendMsg(msg);
+			this->clientList[x]->sendMsg(msg, -1);
 	}
 }
 void Channel::leaveChannel(Client leave)
@@ -581,7 +587,7 @@ void Client::boolSetter(int i, bool caca)
 void	Client::tryLogin()
 {
 	if (_userBool && _nickBool && _passBool)
-		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _username + "@localhost");
+		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _username + "@localhost", -1);
 }
 
 //////////////// ACOMMAND ////////////////
@@ -612,7 +618,7 @@ void	FuncCap::exec(Server *serv, Client *client, std::vector<std::string> vec) c
 {
 	(void)serv;
 	if (vec[1] != "END")
-		client->sendMsg(": CAP * LS :");
+		client->sendMsg(": CAP * LS :", -1);
 }
 
 //////////////// PASS ////////////////
@@ -631,12 +637,12 @@ void	FuncPass::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	(void)serv;
 	if (vec[1] == assword)
 	{
-		client->sendMsg("Good password");
+		client->sendMsg("Good password", -1);
 		client->boolSetter(0, true);
 	}
 	else
 	{
-		client->sendMsg("Bad password");
+		client->sendMsg("Bad password", -1);
 	}
 	client->tryLogin();
 }
@@ -702,7 +708,7 @@ void	FuncPing::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 {
 	(void)serv;
 	(void)vec;
-	client->sendMsg(":server PONG :" + client->getNickname());
+	client->sendMsg(":server PONG :" + client->getNickname(), -1);
 }
 
 //////////////// PRIVMSG ////////////////

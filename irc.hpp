@@ -44,7 +44,7 @@ class Client
 
 	std::string getUsername() const;
 	
-	void sendMsg(std::string msg);
+	void sendMsg(std::string msg, int private_msg);
 	void funcPass(std::vector<std::string> vec);
 	void funcNick(std::string nick);
 	void funcUser(std::vector<std::string> vec);
