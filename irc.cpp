@@ -308,7 +308,7 @@ void joinChannel(Client *join_channel, Channel *to_edit)
 void Client::sendMsg(std::string msg, int private_msg)
 {
 	msg += "\n";
-	if (fd == -1)
+	if (fd == -1) 
 		write(this->fd, msg.c_str(), msg.size());
 	else
 		write(private_msg, msg.c_str(), msg.size());
