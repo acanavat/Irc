@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/16 19:08:48 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/22 14:59:44 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ Client::Client()
 	this->_passBool = false;
 	this->_userBool = false;
 	this->_nickBool = false;
-	this->_user = "default";
+	this->_username = "default";
 	this->_mode1 = "default";
 	this->_mode2 = "default";
 	this->_realname = "default";
@@ -37,24 +37,30 @@ void Client::setFd(int new_fd)
 	this->fd = new_fd;
 }
 
-void Client::setNickname(std::string newNickname)
-{
-	this->nickname = newNickname;
-}
-
 std::string Client::getNickname() const 
 {
 	return  this->nickname;
 }
-/*std::string Client::getUsername() const
+
+std::string Client::getUsername() const
 {
-	return this->username;
+	return this->_username;
 }
 
-void Client::setUsername(std::string newUsername)
+void Client::stringSetter(int i, std::string neww)
 {
-	this->username = newUsername;
-}*/
+	if (i == 0)
+		this->nickname = neww;
+	else if (i == 1)
+		this->_username = neww;
+	else if (i == 2)
+		this->_mode1 = neww;
+	else if (i == 3)
+		this->_mode2 = neww;
+	else if (i == 4)
+		this->_realname = neww;
+}
+
 int Client::getFd() const
 {
 	return (this->fd);
@@ -308,7 +314,8 @@ void joinChannel(Client *join_channel, Channel *to_edit)
 void Client::sendMsg(std::string msg, int private_msg)
 {
 	msg += "\n";
-	if (fd == -1) 
+	(void)private_msg;
+	if (private_msg == -1) 
 		write(this->fd, msg.c_str(), msg.size());
 	else
 		write(private_msg, msg.c_str(), msg.size());
@@ -317,6 +324,8 @@ void Client::sendMsg(std::string msg, int private_msg)
 void Channel::msgChannel(Client sender, std::string msg)
 {
 	size_t x = 0;
+	msg += "\n";
+
 	for (;this->clientList.size() >= x; x++)
 	{
 		if (*this->clientList[x] != sender)
@@ -473,7 +482,6 @@ int main(int argc, char **argv)
 				if (n > 0)
 				{
 					client_map[(*it).fd]->waitingRoom += std::string(buffer);
-					std::cout << "client_map[(*it).fd]->waitingRoom : " << client_map[(*it).fd]->waitingRoom << std::endl;
 					if (strchr(client_map[(*it).fd]->waitingRoom.c_str(), '\n'))
 					{
 						server.rattrapeReddy(client_map[(*it).fd]->waitingRoom, client_map[(*it).fd]);
@@ -494,7 +502,12 @@ int main(int argc, char **argv)
 
 Server::Server() //Toute les COMMANDES a gerer = sous forme de CLASS in here arigato gozxaimaumsuiao
 {
+	this->_cmd.push_back(new FuncCap());
 	this->_cmd.push_back(new FuncPass());
+	this->_cmd.push_back(new FuncNick());
+	this->_cmd.push_back(new FuncUser());
+	this->_cmd.push_back(new FuncPing());
+	//this->_cmd.push_back(new FuncPrivMsg());
 }
 
 Server::~Server()
@@ -530,7 +543,7 @@ void	Server::CmdParser(std::string cmd, Client *client)
 {
 	cmd = cmd.erase(cmd.size() - 1);
 	std::cout << "PARSED CMD = " << cmd << std::endl;
-	if (cmd.find(' ') == std::string::npos)
+	if (cmd.find(' ') == std::string::npos) //each CMD must have at least 1 arg
 	{
 		const char *msg = "CMD is missing arguments \n";
 		throw (msg);
@@ -552,81 +565,32 @@ void	Server::whichCmd(std::vector<std::string> vec, Client *client)
 	for(std::list<Acommand*>::iterator it = _cmd.begin(); it != _cmd.end(); it++) //on parcours toute la liste de CMD in class Server
 	{
 		Acommand *cmd = *it;
+
 		if (cmd->getName() == vec[0]) //check if CMD actuel = CMD rentree par client
 			cmd->exec(this, client, vec);
 	}
 	/*
-	if (vec[0] == "CAP" && vec[1] != "END")
-		client->sendMsg(": CAP * LS :");
-	if (vec[0] == "PASS")
-		client->funcPass(vec);
-	if (vec[0] == "NICK")
-		client->funcNick(vec[1]);
-	if (vec[0] == "USER")
-		client->funcUser(vec);
-	if (vec[0] == "PING")
-		client->sendMsg(":server PONG :" + client->getNickname());
 	if (vec[0] == "PRIVMSG")
 		client->funcPrivMsg(vec);*/
 }
 
-/*
-void	Client::funcPass(std::vector<std::string> vec)
+void Client::boolSetter(int i, bool caca)
 {
-
-	if (vec[1] == assword)
-	{
-		this->sendMsg("Good password");
-		this->_passBool = true;
-	}
-	else
-	{
-		this->sendMsg("Bad password");
-	}
-	tryLogin();
-}
-*/
-
-void	Client::funcUser(std::vector<std::string> vec)
-{
-	//check for 4 elements rentres sinon CMD not accepted
-	vec[4].erase(0, 1);
-	if (vec.size() > 4)
-	{
-		std::vector<std::string>::iterator it = vec.begin() + 5;
-		for(; it != vec.end(); it++)
-		{
-			vec[4] += " ";
-			vec[4] += *it;
-		}
-	}
-
-	this->_user = vec[1];
-	this->_mode1 = vec[2];
-	this->_mode2 = vec[3];
-	this->_realname = vec[4];
-	this->_userBool = true;
-	tryLogin();
-}
-
-void	Client::funcNick(std::string nick)
-{
-	this->nickname = nick;
-	this->_nickBool = true;
-	tryLogin();
-}
-
-void Client::setPass(bool caca)
-{
-	this->_passBool = caca;
+	if (i == 0)
+		this->_passBool = caca;
+	else if (i == 1)
+		this->_nickBool = caca;
+	else if (i == 2)
+		this->_userBool = caca;
 }
 
 void	Client::tryLogin()
 {
 	if (_userBool && _nickBool && _passBool)
-		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _user + "@localhost", -1);
+		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _username + "@localhost", -1);
 }
 
+//////////////// ACOMMAND ////////////////
 Acommand::Acommand(std::string name)
 {
 	_name = name;
@@ -641,8 +605,26 @@ std::string	Acommand::getName()
 	return (_name);
 }
 
-FuncPass::FuncPass(): Acommand("PASS") //CHAQUE COMMANDE HERITE DU CONSTRUCT ACOMMAND WITH SON NOM
+//////////////// CAP ////////////////
+FuncCap::FuncCap(): Acommand("CAP") //CHAQUE COMMANDE HERITE DU CONSTRUCT ACOMMAND WITH SON NOM
 {
+}
+
+FuncCap::~FuncCap()
+{
+}
+
+void	FuncCap::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	(void)serv;
+	if (vec[1] != "END")
+		client->sendMsg(": CAP * LS :", -1);
+}
+
+//////////////// PASS ////////////////
+FuncPass::FuncPass(): Acommand("PASS")
+{
+
 }
 
 FuncPass::~FuncPass()
@@ -656,11 +638,91 @@ void	FuncPass::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	if (vec[1] == assword)
 	{
 		client->sendMsg("Good password", -1);
-		client->setPass(true);
+		client->boolSetter(0, true);
 	}
 	else
 	{
 		client->sendMsg("Bad password", -1);
 	}
 	client->tryLogin();
+}
+//////////////// NICK ////////////////
+FuncNick::FuncNick(): Acommand("NICK")
+{
+}
+
+FuncNick::~FuncNick()
+{
+}
+
+void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	(void)serv;
+	client->stringSetter(0, vec[1]);
+	client->boolSetter(1 ,true);
+	client->tryLogin();
+}
+
+//////////////// USER ////////////////
+FuncUser::FuncUser(): Acommand ("USER")
+{
+}
+
+FuncUser::~FuncUser()
+{
+}
+
+void	FuncUser::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	(void)serv;
+	//check for 4 elements rentres sinon CMD not accepted
+	vec[4].erase(0, 1);
+	if (vec.size() > 4)
+	{
+		std::vector<std::string>::iterator it = vec.begin() + 5;
+		for(; it != vec.end(); it++)
+		{
+			vec[4] += " ";
+			vec[4] += *it;
+		}
+	}
+
+	client->stringSetter(1, vec[1]);
+	client->stringSetter(2, vec[2]);
+	client->stringSetter(3, vec[3]);
+	client->stringSetter(4, vec[4]);
+	client->boolSetter(2, true);
+	client->tryLogin();
+}
+
+//////////////// PING ////////////////
+FuncPing::FuncPing() : Acommand("PING")
+{
+}
+
+FuncPing::~FuncPing()
+{
+}
+
+void	FuncPing::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	(void)serv;
+	(void)vec;
+	client->sendMsg(":server PONG :" + client->getNickname(), -1);
+}
+
+//////////////// PRIVMSG ////////////////
+FuncPrivMsg::FuncPrivMsg(): Acommand("PRIVMSG")
+{
+}
+
+FuncPrivMsg::~FuncPrivMsg()
+{
+}
+
+void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	(void)serv;
+	(void)client;
+	(void)vec;
 }
