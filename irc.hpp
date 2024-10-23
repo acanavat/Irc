@@ -127,6 +127,7 @@ class	Server
 {
 	private:
 	std::list<Acommand*> _cmd;
+	std::map<std::string, Channel*> chanList;
 	public:
 	Server();
 	~Server();
@@ -135,6 +136,7 @@ class	Server
 	void	CmdParser(std::string cmd, Client *client);
 	void	Parser(std::string cmd, Client *client);
 	void	whichCmd(std::vector<std::string> vec, Client *client);
+	int		findChannel(std::string name, int clientFd);
 };
 
 class	Acommand
