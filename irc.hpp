@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/22 15:01:56 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/24 16:17:14 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -72,7 +72,7 @@ class Channel
 	Channel();
 	~Channel();
 	
-	std::vector<Client *> getClientlist();
+	std::vector<Client *> &getClientlist();
 	void addClientlist(Client *newClient);
 	void removeClientlist(Client adiosClient);
 	int nbrClientlist();
@@ -130,13 +130,17 @@ class	Server
 {
 	private:
 	std::list<Acommand*> _cmd;
+	std::map<std::string, Channel*> chanList;
 	public:
 	Server();
 	~Server();
+	
+	std::map<std::string, Channel*>	&getChannelMap();
 	void	rattrapeReddy(std::string msg, Client *client);
 	void	CmdParser(std::string cmd, Client *client);
 	void	Parser(std::string cmd, Client *client);
 	void	whichCmd(std::vector<std::string> vec, Client *client);
+	int		findChannel(std::string name, int clientFd);
 };
 
 class	Acommand

@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/22 14:59:44 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/24 16:21:08 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,6 +59,22 @@ void Client::stringSetter(int i, std::string neww)
 		this->_mode2 = neww;
 	else if (i == 4)
 		this->_realname = neww;
+}
+
+void Client::boolSetter(int i, bool caca)
+{
+	if (i == 0)
+		this->_passBool = caca;
+	else if (i == 1)
+		this->_nickBool = caca;
+	else if (i == 2)
+		this->_userBool = caca;
+}
+
+void	Client::tryLogin()
+{
+	if (_userBool && _nickBool && _passBool)
+		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _username + "@localhost", -1);
 }
 
 int Client::getFd() const
@@ -150,7 +166,7 @@ void Channel::setTopic(std::string new_topic, Client topic_client)
 	topic_client.sendMsg(topic_client.getNickname() + " :Permission Denied- You're not an IRC operator", -1);
 }
 
-std::vector<Client *> Channel::getClientlist()
+std::vector<Client *> &Channel::getClientlist()
 {
 	return this->clientList;
 }
@@ -387,7 +403,6 @@ int main(int argc, char **argv)
     char buffer[BUFFER_SIZE];
     std::vector<pollfd> client;
     std::map<int, Client*> client_map;
-    std::map<std::string, Channel*> channel_list;
 	Server server;
 	if (argc < 3)
 	{
@@ -447,15 +462,15 @@ int main(int argc, char **argv)
 		channel_list["channel1"]->setTopic("new topic", *fake);
 		channel_list["channel1"]->getTopic();
 		return 1;*/
+	Channel testChan;
+
 	try 
 	{
 		while (1)
 		{
 			if (poll(&(*client.begin()), client.size(), 0) < 0)
-			{
-	        	std::cerr << "Error : poll est mourant" << std::endl;
-			}
-			//iterateur pour voir si evenement en cours
+		        	std::cerr << "Error : poll est mourant" << std::endl;
+				//iterateur pour voir si evenement en cours
 			signal(SIGINT, signalHandler);
 			for (std::vector<pollfd>::iterator it = client.begin(); it != client.end(); it++)
 			{
@@ -518,8 +533,8 @@ int main(int argc, char **argv)
 				close((*it).second->getFd());
 				delete it->second;
 			}
-		for (std::map<std::string, Channel *>::iterator it = channel_list.begin(); it != channel_list.end(); it++)
-			delete it->second;
+		//for (std::map<std::string, Channel *>::iterator it = channel_list.begin(); it != channel_list.end(); it++)
+		//	delete it->second;
 		close(server_fd);
 		return (1);
 	}
@@ -532,7 +547,7 @@ Server::Server() //Toute les COMMANDES a gerer = sous forme de CLASS in here ari
 	this->_cmd.push_back(new FuncNick());
 	this->_cmd.push_back(new FuncUser());
 	this->_cmd.push_back(new FuncPing());
-	//this->_cmd.push_back(new FuncPrivMsg());
+	this->_cmd.push_back(new FuncPrivMsg());
 }
 
 Server::~Server()
@@ -541,6 +556,11 @@ Server::~Server()
 	{
 		delete (*it);
 	}
+}
+
+std::map<std::string, Channel*>	&Server::getChannelMap()
+{
+	return (this->chanList);
 }
 
 void	Server::rattrapeReddy(std::string msg, Client *client)
@@ -598,25 +618,21 @@ void	Server::whichCmd(std::vector<std::string> vec, Client *client)
 		if (cmd->getName() == vec[0]) //check if CMD actuel = CMD rentree par client
 			cmd->exec(this, client, vec);
 	}
-	/*
-	if (vec[0] == "PRIVMSG")
-		client->funcPrivMsg(vec);*/
 }
 
-void Client::boolSetter(int i, bool caca)
+int	Server::findChannel(std::string name, int clientFd)
 {
-	if (i == 0)
-		this->_passBool = caca;
-	else if (i == 1)
-		this->_nickBool = caca;
-	else if (i == 2)
-		this->_userBool = caca;
-}
-
-void	Client::tryLogin()
-{
-	if (_userBool && _nickBool && _passBool)
-		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _username + "@localhost", -1);
+	std::map<std::string, Channel*>::iterator itChan = chanList.find(name);
+	if (itChan != chanList.end())
+	{
+		std::vector<Client*> &clientList = (*itChan).second->getClientlist();
+		std::vector<Client*>::iterator itClient = clientList.begin();
+		for (; itClient != clientList.end(); itClient++)
+			if ((*itClient)->getFd() == clientFd)
+				return (1);
+		return (2);
+	}
+	return (0);
 }
 
 //////////////// ACOMMAND ////////////////
@@ -751,7 +767,11 @@ FuncPrivMsg::~FuncPrivMsg()
 
 void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
-	(void)serv;
-	(void)client;
-	(void)vec;
+	createChannel("test", client, serv->getChannelMap()); //testing line
+	if (serv->findChannel(vec[1], client->getFd()) == 1)
+		client->sendMsg("Channel and Client found", -1);
+	else if (serv->findChannel(vec[1], client->getFd()) == 2)
+		client->sendMsg("Sender must join Channel before sending msg", -1);
+	else
+		client->sendMsg("No channel Found", -1);
 }
