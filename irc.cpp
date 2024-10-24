@@ -11,7 +11,7 @@
 /* ************************************************************************** */
 
 #include "irc.hpp"
-
+#include <unistd.h>
 
 Client::Client()
 {
@@ -147,7 +147,7 @@ void Channel::setTopic(std::string new_topic, Client topic_client)
 	}
 	else
 		this->topic = new_topic;
-	topic_client.sendMsg("you don't have permission for this", -1);
+	topic_client.sendMsg(topic_client.getNickname() + " :Permission Denied- You're not an IRC operator", -1);
 }
 
 std::vector<Client *> Channel::getClientlist()
@@ -308,7 +308,7 @@ void joinChannel(Client *join_channel, Channel *to_edit)
 		to_edit->addClientlist(join_channel);
 	}
 	else
-		std::cout << "serveur full" << std::endl;
+		std::cout << join_channel->getNickname() << " " << to_edit->getTopicswitch() << " :Cannot join channel" << std::endl;
 }
 
 void Client::sendMsg(std::string msg, int private_msg)
@@ -324,7 +324,7 @@ void Client::sendMsg(std::string msg, int private_msg)
 void Channel::msgChannel(Client sender, std::string msg)
 {
 	size_t x = 0;
-	msg += "\n";
+	//msg += "\n";
 
 	for (;this->clientList.size() >= x; x++)
 	{
@@ -371,7 +371,12 @@ void printclientList(Channel client_list)
 		std::cout << print[x]->getNickname() << std::endl;
 	}
 }
-
+void signalHandler(int signum) 
+{
+	(void)signum;
+	throw std::exception();
+}
+// void controleC(std::map<std::string, Channel*> chanel_list)
 int main(int argc, char **argv)
 {
 	int server_fd;
@@ -390,6 +395,8 @@ int main(int argc, char **argv)
 	}
     assword = argv[2];  
 	port = atoi(argv[1]);
+	if (port <= 0 || port > 65536)
+		return (1);
 	server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (server_fd < 0)
 	{
@@ -414,7 +421,7 @@ int main(int argc, char **argv)
     }
 
 	client.push_back(create_pollfd(server_fd, (POLLIN|POLLOUT), 0));
-/*	Client *fake_client = new Client();
+	/*Client *fake_client = new Client();
 	//fake_client->setNickname("fake_client");
 	Client *fake = new Client();
 	//fake->setNickname("fake");
@@ -440,63 +447,81 @@ int main(int argc, char **argv)
 		channel_list["channel1"]->setTopic("new topic", *fake);
 		channel_list["channel1"]->getTopic();
 		return 1;*/
-	while (1)
+	try 
 	{
-		if (poll(&(*client.begin()), client.size(), 0) < 0)
+		while (1)
 		{
-        	std::cerr << "Error : poll est mourant" << std::endl;
-		}
-		//iterateur pour voir si evenement en cours
-		for (std::vector<pollfd>::iterator it = client.begin(); it != client.end(); it++)
-		{
-			if (((*it).revents & POLLIN) != 1) //* pour la valeur
-				continue ;
-			if ((*it).fd == server_fd) // new connection
+			if (poll(&(*client.begin()), client.size(), 0) < 0)
 			{
-				int new_socket;
-   				new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&size_addr);
-				if (new_socket < 0)
-				{
-				    std::cerr << "Error : desole les tn c'est pas possible" << std::endl;
-				    return 1;
-				}
-
-				client.push_back(create_pollfd(new_socket, (POLLIN|POLLOUT), 0)); // remplie le vector de notre fd
-				std::cout << "New client is here" << std::endl;
-				Client *new_client = new(Client);
-				new_client->setFd(new_socket);
-				client_map[new_socket] = new_client;
-				//afficher ce msg only when USER NICK PASS valides
-				send(new_socket, "Bienvenue sur mon serveur\n", 26, 0);
-				break ; 
+	        	std::cerr << "Error : poll est mourant" << std::endl;
 			}
-			else
+			//iterateur pour voir si evenement en cours
+			signal(SIGINT, signalHandler);
+			for (std::vector<pollfd>::iterator it = client.begin(); it != client.end(); it++)
 			{
-				memset(buffer, 0, BUFFER_SIZE);
-				int n = recv((*it).fd, buffer, BUFFER_SIZE - 1, 0);
-				if (n < 0)
+				if (((*it).revents & POLLIN) != 1) //* pour la valeur
+					continue ;
+				if ((*it).fd == server_fd) // new connection
 				{
-					std::cerr << "Error : recv" << std::endl;
-					return 1;
-				}
-				if (n > 0)
-				{
-					client_map[(*it).fd]->waitingRoom += std::string(buffer);
-					if (strchr(client_map[(*it).fd]->waitingRoom.c_str(), '\n'))
+					int new_socket;
+	   				new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&size_addr);
+					if (new_socket < 0)
 					{
-						server.rattrapeReddy(client_map[(*it).fd]->waitingRoom, client_map[(*it).fd]);
-						client_map[(*it).fd]->waitingRoom = "";
+					    std::cerr << "Error : desole les tn c'est pas possible" << std::endl;
+					    return 1;
 					}
-				}	
-				else //if (n == 0) //deco client
-				{
-					delete(client_map[(*it).fd]);
-					client.erase(it);
-					std::cout << "Client disconected" << std::endl;
+
+					client.push_back(create_pollfd(new_socket, (POLLIN|POLLOUT), 0)); // remplie le vector de notre fd
+					std::cout << "New client is here" << std::endl;
+					Client *new_client = new(Client);
+					new_client->setFd(new_socket);
+					client_map[new_socket] = new_client;
+					//afficher ce msg only when USER NICK PASS valides
+					send(new_socket, "Bienvenue sur mon serveur\n", 26, 0);
+					break ; 
 				}
-				break ;
+				else
+				{
+					memset(buffer, 0, BUFFER_SIZE);
+					int n = recv((*it).fd, buffer, BUFFER_SIZE - 1, 0);
+					if (n < 0)
+					{
+						std::cerr << "Error : recv" << std::endl;
+						return 1;
+					}
+					if (n > 0)
+					{
+						client_map[(*it).fd]->waitingRoom += std::string(buffer);
+						if (strchr(client_map[(*it).fd]->waitingRoom.c_str(), '\n'))
+						{
+							server.rattrapeReddy(client_map[(*it).fd]->waitingRoom, client_map[(*it).fd]);
+							client_map[(*it).fd]->waitingRoom = "";
+						}
+					}	
+					else //if (n == 0) //deco client
+					{
+						std::cout << "MERDE :: " << client_map[(*it).fd] << std::endl;
+						close((*it).fd);
+						delete(client_map[(*it).fd]);
+						client.erase(it);
+						std::cout << "Client disconected" << std::endl;
+					}
+					break ;
+				}
 			}
 		}
+	}
+	catch (const std::exception& e)
+	{
+		for (std::map<int, Client *>::iterator it = client_map.begin(); it != client_map.end(); it++)
+			{
+				close((*it).second->getFd());
+				delete it->second;
+			}
+		for (std::map<std::string, Channel *>::iterator it = channel_list.begin(); it != channel_list.end(); it++)
+			delete it->second;
+		close(server_fd);
+		return (1);
 	}
 }
 
@@ -512,6 +537,10 @@ Server::Server() //Toute les COMMANDES a gerer = sous forme de CLASS in here ari
 
 Server::~Server()
 {
+	for (std::list<Acommand*>::iterator it = this->_cmd.begin(); it != this->_cmd.end(); it++)
+	{
+		delete (*it);
+	}
 }
 
 void	Server::rattrapeReddy(std::string msg, Client *client)
@@ -547,8 +576,8 @@ void	Server::CmdParser(std::string cmd, Client *client)
 	{
 		const char *msg = "CMD is missing arguments \n";
 		throw (msg);
-	}
 
+	}
 	std::stringstream ss(cmd);
 	std::string word;
 	std::vector<std::string> cmdVec;

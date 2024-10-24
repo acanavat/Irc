@@ -24,6 +24,9 @@
 #include <sstream>
 #include <map>
 #include <list>
+#include <iostream>
+#include <csignal>
+#include <cstdlib>
 #define BUFFER_SIZE 1024
 
 std::string assword;
@@ -130,7 +133,6 @@ class	Server
 	public:
 	Server();
 	~Server();
-
 	void	rattrapeReddy(std::string msg, Client *client);
 	void	CmdParser(std::string cmd, Client *client);
 	void	Parser(std::string cmd, Client *client);
