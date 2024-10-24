@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/22 14:59:44 by rbulanad         ###   ########.fr       */
+/*   Updated: 2024/10/24 16:21:08 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -166,7 +166,7 @@ void Channel::setTopic(std::string new_topic, Client topic_client)
 	topic_client.sendMsg("you don't have permission for this", -1);
 }
 
-std::vector<Client *> Channel::getClientlist()
+std::vector<Client *> &Channel::getClientlist()
 {
 	return this->clientList;
 }
@@ -460,9 +460,7 @@ int main(int argc, char **argv)
 	while (1)
 	{
 		if (poll(&(*client.begin()), client.size(), 0) < 0)
-		{
         	std::cerr << "Error : poll est mourant" << std::endl;
-		}
 		//iterateur pour voir si evenement en cours
 		for (std::vector<pollfd>::iterator it = client.begin(); it != client.end(); it++)
 		{
@@ -531,6 +529,11 @@ Server::~Server()
 {
 }
 
+std::map<std::string, Channel*>	&Server::getChannelMap()
+{
+	return (this->chanList);
+}
+
 void	Server::rattrapeReddy(std::string msg, Client *client)
 {
 	try
@@ -593,8 +596,9 @@ int	Server::findChannel(std::string name, int clientFd)
 	std::map<std::string, Channel*>::iterator itChan = chanList.find(name);
 	if (itChan != chanList.end())
 	{
-		std::vector<Client *>::iterator itClient = (*itChan).second->getClientlist().begin();
-		for (; itClient != (*itChan).second->getClientlist().end(); itClient++)
+		std::vector<Client*> &clientList = (*itChan).second->getClientlist();
+		std::vector<Client*>::iterator itClient = clientList.begin();
+		for (; itClient != clientList.end(); itClient++)
 			if ((*itClient)->getFd() == clientFd)
 				return (1);
 		return (2);
@@ -734,9 +738,10 @@ FuncPrivMsg::~FuncPrivMsg()
 
 void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
-	if (serv->findChannel(vec[1], client->getFd() == 1))
+	createChannel("test", client, serv->getChannelMap()); //testing line
+	if (serv->findChannel(vec[1], client->getFd()) == 1)
 		client->sendMsg("Channel and Client found", -1);
-	else if (serv->findChannel(vec[1], client->getFd() == 2))
+	else if (serv->findChannel(vec[1], client->getFd()) == 2)
 		client->sendMsg("Sender must join Channel before sending msg", -1);
 	else
 		client->sendMsg("No channel Found", -1);
