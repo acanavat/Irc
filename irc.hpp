@@ -43,6 +43,7 @@ class Client
 	bool operator==(const Client &first);
 	bool operator!=(const Client &first);
 
+	void	setNickname(std::string newnick);
 	std::string getNickname() const;
 
 	std::string getUsername() const;
@@ -87,7 +88,7 @@ class Channel
 	
 	void setShortname(std::string channel_name);
 	std::string getShortname();
-	void msgChannel(Client sender, std::string msg);
+	void msgChannel(int fdSender, std::string msg);
 	void leaveChannel(Client leave);
 
 	bool getCmdl();
@@ -109,6 +110,7 @@ class Channel
 
 	void setCmdi(Client client,bool cmd);
 	bool getCmdi();
+	Client *findClient(int fd);
 	private :
 	std::vector<Client *> clientList;
 	std::vector<Client *> clientOperator;
@@ -130,7 +132,7 @@ class	Server
 {
 	private:
 	std::list<Acommand*> _cmd;
-	std::map<std::string, Channel*> chanList;
+	std::map<std::string, Channel*> chanMap;
 	public:
 	Server();
 	~Server();
@@ -140,7 +142,7 @@ class	Server
 	void	CmdParser(std::string cmd, Client *client);
 	void	Parser(std::string cmd, Client *client);
 	void	whichCmd(std::vector<std::string> vec, Client *client);
-	int		findChannel(std::string name, int clientFd);
+	Channel	*findChannel(std::string name);
 };
 
 class	Acommand

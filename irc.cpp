@@ -37,6 +37,11 @@ void Client::setFd(int new_fd)
 	this->fd = new_fd;
 }
 
+void Client::setNickname(std::string newnick) 
+{
+	nickname = newnick;
+}
+
 std::string Client::getNickname() const 
 {
 	return  this->nickname;
@@ -188,6 +193,7 @@ void Channel::addClientlist(Client *newClient)
 		return ;
 	this->clientList.push_back(newClient);
 }
+
 void Channel::removeClientlist(Client adiosClient)
 {
 	for (std::vector<Client *>::iterator it = this->clientList.begin(); it != this->clientList.end(); it++)
@@ -264,6 +270,7 @@ bool Channel::getTopicswitch()
 {
 	return this->topic_switch;
 }
+
 void Channel::setCmdi(Client client, bool cmd)
 {
 	for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
@@ -276,6 +283,7 @@ void Channel::setCmdi(Client client, bool cmd)
 		}
 	}
 }
+
 bool Channel::getCmdi()
 {
 
@@ -330,22 +338,19 @@ void joinChannel(Client *join_channel, Channel *to_edit)
 void Client::sendMsg(std::string msg, int private_msg)
 {
 	msg += "\n";
-	(void)private_msg;
 	if (private_msg == -1) 
 		write(this->fd, msg.c_str(), msg.size());
 	else
 		write(private_msg, msg.c_str(), msg.size());
 }
 
-void Channel::msgChannel(Client sender, std::string msg)
+void Channel::msgChannel(int fdSender , std::string msg)
 {
-	size_t x = 0;
-	//msg += "\n";
-
-	for (;this->clientList.size() >= x; x++)
+	std::vector<Client *>::iterator it = clientList.begin(); 
+	for (; it != clientList.end(); it++)
 	{
-		if (*this->clientList[x] != sender)
-			this->clientList[x]->sendMsg(msg, -1);
+		if ((*it)->getFd() != fdSender)
+			(*it)->sendMsg(msg, -1);
 	}
 }
 void Channel::leaveChannel(Client leave)
@@ -359,6 +364,17 @@ void Channel::leaveChannel(Client leave)
 			return ;
 		}
 	}
+}
+
+Client *Channel::findClient(int fd)
+{
+	std::vector<Client *>::iterator it = clientList.begin();
+	for(; it != clientList.end(); it++)
+	{
+		if ((*it)->getFd() == fd)
+			return (*it);
+	}
+	return (NULL);
 }
 
 void printChannel(std::map<std::string, Channel*> &channel_list)
@@ -378,6 +394,7 @@ Channel *getChannel(std::string name, std::map<std::string, Channel*> *channel_l
 	}
 	return (NULL);
 }
+
 void printclientList(Channel client_list)
 {
 	std::vector<Client *> print;
@@ -533,8 +550,8 @@ int main(int argc, char **argv)
 				close((*it).second->getFd());
 				delete it->second;
 			}
-		//for (std::map<std::string, Channel *>::iterator it = channel_list.begin(); it != channel_list.end(); it++)
-		//	delete it->second;
+		for (std::map<std::string, Channel *>::iterator it = server.getChannelMap().begin(); it != server.getChannelMap().end(); it++)
+			delete it->second;
 		close(server_fd);
 		return (1);
 	}
@@ -560,7 +577,7 @@ Server::~Server()
 
 std::map<std::string, Channel*>	&Server::getChannelMap()
 {
-	return (this->chanList);
+	return (this->chanMap);
 }
 
 void	Server::rattrapeReddy(std::string msg, Client *client)
@@ -620,19 +637,14 @@ void	Server::whichCmd(std::vector<std::string> vec, Client *client)
 	}
 }
 
-int	Server::findChannel(std::string name, int clientFd)
+Channel	*Server::findChannel(std::string name)
 {
-	std::map<std::string, Channel*>::iterator itChan = chanList.find(name);
-	if (itChan != chanList.end())
+	if (chanMap.find(name) != chanMap.end())
 	{
-		std::vector<Client*> &clientList = (*itChan).second->getClientlist();
-		std::vector<Client*>::iterator itClient = clientList.begin();
-		for (; itClient != clientList.end(); itClient++)
-			if ((*itClient)->getFd() == clientFd)
-				return (1);
-		return (2);
+		Channel *chanPtr = chanMap[name];
+		return (chanPtr);
 	}
-	return (0);
+	return (NULL);
 }
 
 //////////////// ACOMMAND ////////////////
@@ -767,11 +779,29 @@ FuncPrivMsg::~FuncPrivMsg()
 
 void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
-	createChannel("test", client, serv->getChannelMap()); //testing line
-	if (serv->findChannel(vec[1], client->getFd()) == 1)
-		client->sendMsg("Channel and Client found", -1);
-	else if (serv->findChannel(vec[1], client->getFd()) == 2)
-		client->sendMsg("Sender must join Channel before sending msg", -1);
-	else
-		client->sendMsg("No channel Found", -1);
+	Channel	*chanPtr;
+	Client	*clientPtr;
+	vec[2].erase(0,1); //erase le ':'
+	if (vec[1].find('#') != std::string::npos) //msging in channel
+	{
+		vec[1].erase(0,1); //erase le '#'
+		chanPtr = serv->findChannel(vec[1]);
+		if (!chanPtr)
+		{
+			client->sendMsg("ERROR:No channel Found", -1);
+			return ;
+		}
+		clientPtr = chanPtr->findClient(client->getFd());
+		if (!clientPtr)
+		{
+			client->sendMsg("ERROR:Sender is not part of the channel", -1);
+			return ;
+		}
+		chanPtr->msgChannel(clientPtr->getFd(), vec[2]);
+	}
+	client->sendMsg("PRIVMSG " + client->getNickname() + " :" + vec[2], 5);
 }
+
+//Correct the segfault dans msgChannel
+//Correct the segfault dans msgChannel
+//Correct the segfault dans msgChannel
