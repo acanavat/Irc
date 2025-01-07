@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/24 16:17:14 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/06 18:10:34 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -133,16 +133,20 @@ class	Server
 	private:
 	std::list<Acommand*> _cmd;
 	std::map<std::string, Channel*> chanMap;
+    std::map<int, Client*> clientMap;
 	public:
 	Server();
 	~Server();
 	
 	std::map<std::string, Channel*>	&getChannelMap();
+    std::map<int, Client*> &getClientMap();
 	void	rattrapeReddy(std::string msg, Client *client);
 	void	CmdParser(std::string cmd, Client *client);
 	void	Parser(std::string cmd, Client *client);
 	void	whichCmd(std::vector<std::string> vec, Client *client);
 	Channel	*findChannel(std::string name);
+	Client	*findClient(std::string name);
+	void	printClients();
 };
 
 class	Acommand
@@ -204,6 +208,16 @@ class	FuncPing : public Acommand
 	public:
 	FuncPing();
 	~FuncPing();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+};
+
+class	FuncJoin : public Acommand
+{
+	private:
+	public:
+	FuncJoin();
+	~FuncJoin();
 
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
 };

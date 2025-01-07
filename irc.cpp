@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2024/10/24 16:21:08 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/07 11:33:20 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -205,10 +205,12 @@ void Channel::removeClientlist(Client adiosClient)
 		}
 	}
 }
+
 std::vector<Client *> Channel::getClientoperator()
 {
 	return this->clientOperator;
 }
+
 void Channel::addClientoperator(Client *newClient)
 {
 	std::vector<Client *>::iterator it = this->clientOperator.begin();
@@ -220,6 +222,7 @@ void Channel::addClientoperator(Client *newClient)
 		return ;
 	this->clientOperator.push_back(newClient);
 }
+
 void Channel::removeClientoperator(Client adiosClient)
 {
 	for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
@@ -231,6 +234,7 @@ void Channel::removeClientoperator(Client adiosClient)
 		}
 	}
 }
+
 std::vector<Client *> Channel::getClientcreator()
 {
 	return this->clientCreator;
@@ -418,13 +422,11 @@ int main(int argc, char **argv)
 	struct sockaddr_in address; //represante adresse internet pour ipv4
     int size_addr = sizeof(address);
     char buffer[BUFFER_SIZE];
-    std::vector<pollfd> client;
-    std::map<int, Client*> client_map;
 	Server server;
+	std::map<int, Client*> client_map = server.getClientMap();
+    std::vector<pollfd> client;
 	if (argc < 3)
-	{
 		return 1;
-	}
     assword = argv[2];  
 	port = atoi(argv[1]);
 	if (port <= 0 || port > 65536)
@@ -479,7 +481,6 @@ int main(int argc, char **argv)
 		channel_list["channel1"]->setTopic("new topic", *fake);
 		channel_list["channel1"]->getTopic();
 		return 1;*/
-	Channel testChan;
 
 	try 
 	{
@@ -507,6 +508,7 @@ int main(int argc, char **argv)
 					std::cout << "New client is here" << std::endl;
 					Client *new_client = new(Client);
 					new_client->setFd(new_socket);
+					server.getClientMap().insert(std::pair<int, Client*>(new_socket, new_client));
 					client_map[new_socket] = new_client;
 					//afficher ce msg only when USER NICK PASS valides
 					send(new_socket, "Bienvenue sur mon serveur\n", 26, 0);
@@ -535,6 +537,7 @@ int main(int argc, char **argv)
 						std::cout << "MERDE :: " << client_map[(*it).fd] << std::endl;
 						close((*it).fd);
 						delete(client_map[(*it).fd]);
+						//delete(server.getClientMap()[(*it).fd]);
 						client.erase(it);
 						std::cout << "Client disconected" << std::endl;
 					}
@@ -564,6 +567,7 @@ Server::Server() //Toute les COMMANDES a gerer = sous forme de CLASS in here ari
 	this->_cmd.push_back(new FuncNick());
 	this->_cmd.push_back(new FuncUser());
 	this->_cmd.push_back(new FuncPing());
+	this->_cmd.push_back(new FuncJoin());
 	this->_cmd.push_back(new FuncPrivMsg());
 }
 
@@ -578,6 +582,11 @@ Server::~Server()
 std::map<std::string, Channel*>	&Server::getChannelMap()
 {
 	return (this->chanMap);
+}
+
+std::map<int, Client*> &Server::getClientMap()
+{
+	return (this->clientMap);
 }
 
 void	Server::rattrapeReddy(std::string msg, Client *client)
@@ -647,6 +656,25 @@ Channel	*Server::findChannel(std::string name)
 	return (NULL);
 }
 
+Client	*Server::findClient(std::string name)
+{
+	std::map<int, Client*>::iterator it = clientMap.begin();
+	for (; it != clientMap.end(); it++)
+	{
+		if (it->second->getNickname() == name)
+			return (it->second);
+	}
+	return (NULL);
+}
+
+void	Server::printClients()
+{
+	std::cout << "PRINTING" << std::endl;
+	std::map<int, Client*>::iterator it = clientMap.begin();
+	for (; it != clientMap.end(); it++)
+		std::cout << "NICK = " << it->second->getNickname() << std::endl;
+}
+
 //////////////// ACOMMAND ////////////////
 Acommand::Acommand(std::string name)
 {
@@ -714,7 +742,13 @@ FuncNick::~FuncNick()
 
 void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
-	(void)serv;
+	std::map<int, Client*> clientMap = serv->getClientMap();
+	std::map<int, Client*>::iterator it = clientMap.begin();
+	for (; it != clientMap.end(); it++)
+	{
+		if (vec[1] == it->second->getNickname())
+			vec[1] += "1";
+	}
 	client->stringSetter(0, vec[1]);
 	client->boolSetter(1 ,true);
 	client->tryLogin();
@@ -766,6 +800,23 @@ void	FuncPing::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	(void)serv;
 	(void)vec;
 	client->sendMsg(":server PONG :" + client->getNickname(), -1);
+	serv->printClients();
+}
+
+//////////////// JOIN ////////////////
+FuncJoin::FuncJoin() : Acommand("JOIN")
+{
+}
+
+FuncJoin::~FuncJoin()
+{
+}
+
+void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	(void)serv;
+	(void)vec;
+	(void)client;
 }
 
 //////////////// PRIVMSG ////////////////
@@ -799,9 +850,21 @@ void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> ve
 		}
 		chanPtr->msgChannel(clientPtr->getFd(), vec[2]);
 	}
-	client->sendMsg("PRIVMSG " + client->getNickname() + " :" + vec[2], 5);
+	else
+	{
+		clientPtr = serv->findClient(vec[1]);
+		if (!clientPtr)
+		{
+			client->sendMsg("ERROR:User not found", -1);
+			return ;
+		}
+		if (clientPtr->getNickname() == client->getNickname())
+		{	
+			client->sendMsg("ERROR:Can not send to self", -1);
+			return ;
+		}
+		client->sendMsg(":" + client->getNickname() + " PRIVMSG " + clientPtr->getNickname() + " :" + vec[2], clientPtr->getFd());
+	}
 }
 
-//Correct the segfault dans msgChannel
-//Correct the segfault dans msgChannel
-//Correct the segfault dans msgChannel
+//Join Function, delete client from map when disconnects, in NICK do the registration check (for netcat)
