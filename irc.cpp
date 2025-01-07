@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/07 11:33:20 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/07 14:28:31 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -532,13 +532,14 @@ int main(int argc, char **argv)
 							client_map[(*it).fd]->waitingRoom = "";
 						}
 					}	
-					else //if (n == 0) //deco client
+					else if (n == 0) //if (n == 0) //deco client
 					{
-						std::cout << "MERDE :: " << client_map[(*it).fd] << std::endl;
-						close((*it).fd);
-						delete(client_map[(*it).fd]);
-						//delete(server.getClientMap()[(*it).fd]);
-						client.erase(it);
+						int fdeco = (*it).fd;
+						std::cout << "MERDE :: " << client_map[fdeco]->getNickname() << std::endl;
+						close(fdeco);
+						delete server.getClientMap()[fdeco];
+						server.getClientMap().erase(fdeco);
+						it = client.erase(it);
 						std::cout << "Client disconected" << std::endl;
 					}
 					break ;
@@ -548,11 +549,13 @@ int main(int argc, char **argv)
 	}
 	catch (const std::exception& e)
 	{
-		for (std::map<int, Client *>::iterator it = client_map.begin(); it != client_map.end(); it++)
+		std::cout << "FIRST" << std::endl;
+		for (std::map<int, Client *>::iterator it = server.getClientMap().begin(); it != server.getClientMap().end(); it++)
 			{
 				close((*it).second->getFd());
 				delete it->second;
 			}
+		std::cout << "SECOND" << std::endl;
 		for (std::map<std::string, Channel *>::iterator it = server.getChannelMap().begin(); it != server.getChannelMap().end(); it++)
 			delete it->second;
 		close(server_fd);
@@ -867,4 +870,4 @@ void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> ve
 	}
 }
 
-//Join Function, delete client from map when disconnects, in NICK do the registration check (for netcat)
+//Join Function, in NICK do the registration check (for netcat)
