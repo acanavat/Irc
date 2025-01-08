@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/08 15:54:59 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/08 18:32:32 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -748,8 +748,7 @@ FuncNick::FuncNick(): Acommand("NICK")
 FuncNick::~FuncNick()
 {
 }
-//if nick is set by first connection and nick already used just add '_' at the end
-//if client uses /nick and nick already used issue error msg "Nick <nick> is already used" and dont change anything
+
 void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
 	bool alrUsed;
@@ -842,12 +841,27 @@ FuncJoin::FuncJoin() : Acommand("JOIN")
 FuncJoin::~FuncJoin()
 {
 }
-
+//joining multiple channels should be possible
 void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
-	(void)serv;
 	(void)vec;
 	(void)client;
+	Channel *chanPtr = serv->findChannel(vec[1]);
+	if (!chanPtr) //if chan does not exist, create it
+	{
+		chanPtr = new Channel();
+		client->sendMsg("created new channel: " + vec[1], -1);
+		serv->getChannelMap().insert(std::pair<std::string, Channel*>(vec[1].erase(0,1), chanPtr)); //created and added to the chanmap
+	}
+	std::map<std::string, Channel*>::iterator it = serv->getChannelMap().begin();
+	for(; it != serv->getChannelMap().end(); it++)
+	{
+		if (it->first == vec[1])
+		{
+			client->sendMsg("You have joined the channel: " + vec[1], -1);
+			it->second->addClientlist(client); //add client to the clientlist (need to check about client Operator et Creator)
+		}
+	}
 }
 
 //////////////// PRIVMSG ////////////////
