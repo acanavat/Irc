@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/06 18:10:34 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/08 14:38:46 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,13 +48,14 @@ class Client
 
 	std::string getUsername() const;
 	
-	void sendMsg(std::string msg, int private_msg);
-	void funcPass(std::vector<std::string> vec);
-	void funcNick(std::string nick);
-	void funcUser(std::vector<std::string> vec);
-	void tryLogin();
-	void boolSetter(int i, bool caca); //0=pass, 1=nick, 2=user
-	void stringSetter(int i, std::string neww); //0=nick, 1=user, 2=mode1, 3=mode2, 4=realname
+	void	sendMsg(std::string msg, int private_msg);
+	void	funcPass(std::vector<std::string> vec);
+	void	funcNick(std::string nick);
+	void	funcUser(std::vector<std::string> vec);
+	void	tryLogin();
+	void	boolSetter(int i, bool caca); //0=pass, 1=nick, 2=user 3=first co
+	void	stringSetter(int i, std::string neww); //0=nick, 1=user, 2=mode1, 3=mode2, 4=realname
+	int		isFirstCo();
 	private :
 	int fd;
 	std::string nickname;
@@ -65,6 +66,7 @@ class Client
 	bool _passBool;
 	bool _nickBool;
 	bool _userBool;
+	bool _firstCoBool;
 };
 
 class Channel

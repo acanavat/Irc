@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/07 14:28:31 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/08 15:54:59 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@ Client::Client()
 	this->_userBool = false;
 	this->_nickBool = false;
 	this->_username = "default";
+	this->_firstCoBool = true;
 	this->_mode1 = "default";
 	this->_mode2 = "default";
 	this->_realname = "default";
@@ -74,12 +75,21 @@ void Client::boolSetter(int i, bool caca)
 		this->_nickBool = caca;
 	else if (i == 2)
 		this->_userBool = caca;
+	else if (i == 3)
+		this->_firstCoBool = caca;
 }
 
 void	Client::tryLogin()
 {
 	if (_userBool && _nickBool && _passBool)
 		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _username + "@localhost", -1);
+}
+
+int	Client::isFirstCo()
+{
+	if (_firstCoBool)
+		return (1);
+	return (0);
 }
 
 int Client::getFd() const
@@ -549,13 +559,11 @@ int main(int argc, char **argv)
 	}
 	catch (const std::exception& e)
 	{
-		std::cout << "FIRST" << std::endl;
 		for (std::map<int, Client *>::iterator it = server.getClientMap().begin(); it != server.getClientMap().end(); it++)
 			{
 				close((*it).second->getFd());
 				delete it->second;
 			}
-		std::cout << "SECOND" << std::endl;
 		for (std::map<std::string, Channel *>::iterator it = server.getChannelMap().begin(); it != server.getChannelMap().end(); it++)
 			delete it->second;
 		close(server_fd);
@@ -729,9 +737,7 @@ void	FuncPass::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 		client->boolSetter(0, true);
 	}
 	else
-	{
 		client->sendMsg("Bad password", -1);
-	}
 	client->tryLogin();
 }
 //////////////// NICK ////////////////
@@ -742,19 +748,41 @@ FuncNick::FuncNick(): Acommand("NICK")
 FuncNick::~FuncNick()
 {
 }
-
+//if nick is set by first connection and nick already used just add '_' at the end
+//if client uses /nick and nick already used issue error msg "Nick <nick> is already used" and dont change anything
 void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
+	bool alrUsed;
 	std::map<int, Client*> clientMap = serv->getClientMap();
 	std::map<int, Client*>::iterator it = clientMap.begin();
-	for (; it != clientMap.end(); it++)
+	std::cout << "client = " << client << ", bool = " << client->isFirstCo() << std::endl;
+	for (; it != clientMap.end(); it++) //check if nick is already used
 	{
-		if (vec[1] == it->second->getNickname())
-			vec[1] += "1";
+		if (vec[1] == it->second->getNickname() && it->first != client->getFd())
+			alrUsed = true;
 	}
-	client->stringSetter(0, vec[1]);
-	client->boolSetter(1 ,true);
-	client->tryLogin();
+	if (client->isFirstCo()) //if is first conect
+	{
+		if (alrUsed)
+		{
+			vec[1] += "_";
+			client->sendMsg("Added '_' to your nick ", -1);
+		}
+		client->stringSetter(0, vec[1]);
+		client->boolSetter(1 ,true);
+		client->boolSetter(3 ,false); //mark the first connection
+		client->tryLogin();
+	}
+	else //not first co
+	{
+		if (alrUsed)
+			client->sendMsg(vec[1] + " :Nickname already in use.", -1);
+		else
+		{
+			client->stringSetter(0, vec[1]);
+			client->boolSetter(1 ,true);
+		}
+	}
 }
 
 //////////////// USER ////////////////
