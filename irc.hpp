@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/08 14:38:46 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/09 16:55:03 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,8 +45,8 @@ class Client
 
 	void	setNickname(std::string newnick);
 	std::string getNickname() const;
-
 	std::string getUsername() const;
+	std::string getId() const;
 	
 	void	sendMsg(std::string msg, int private_msg);
 	void	funcPass(std::vector<std::string> vec);
@@ -54,7 +54,7 @@ class Client
 	void	funcUser(std::vector<std::string> vec);
 	void	tryLogin();
 	void	boolSetter(int i, bool caca); //0=pass, 1=nick, 2=user 3=first co
-	void	stringSetter(int i, std::string neww); //0=nick, 1=user, 2=mode1, 3=mode2, 4=realname
+	void	stringSetter(int i, std::string neww); //0=nick, 1=user, 2=mode1, 3=mode2, 4=realname, 5=id
 	int		isFirstCo();
 	private :
 	int fd;
@@ -63,6 +63,7 @@ class Client
 	std::string _mode1;
 	std::string _mode2;
 	std::string _realname;
+	std::string _id;
 	bool _passBool;
 	bool _nickBool;
 	bool _userBool;
@@ -230,6 +231,16 @@ class	FuncPrivMsg : public Acommand
 	public:
 	FuncPrivMsg();
 	~FuncPrivMsg();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+};
+
+class	FuncQuit : public Acommand
+{
+	private:
+	public:
+	FuncQuit();
+	~FuncQuit();
 
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
 };

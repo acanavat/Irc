@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/08 18:32:32 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/09 18:02:12 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@ Client::Client()
 	this->_userBool = false;
 	this->_nickBool = false;
 	this->_username = "default";
+	this->_id = "default";
 	this->_firstCoBool = true;
 	this->_mode1 = "default";
 	this->_mode2 = "default";
@@ -53,6 +54,11 @@ std::string Client::getUsername() const
 	return this->_username;
 }
 
+std::string Client::getId() const
+{
+	return this->_id;
+}
+
 void Client::stringSetter(int i, std::string neww)
 {
 	if (i == 0)
@@ -65,6 +71,8 @@ void Client::stringSetter(int i, std::string neww)
 		this->_mode2 = neww;
 	else if (i == 4)
 		this->_realname = neww;
+	else if (i == 5)
+		this->_id = neww;
 }
 
 void Client::boolSetter(int i, bool caca)
@@ -82,7 +90,11 @@ void Client::boolSetter(int i, bool caca)
 void	Client::tryLogin()
 {
 	if (_userBool && _nickBool && _passBool)
+	{
 		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _username + "@localhost", -1);
+		std::string id = "ID_" + nickname + "_ID";
+		stringSetter(5, id);
+	}
 }
 
 int	Client::isFirstCo()
@@ -580,6 +592,7 @@ Server::Server() //Toute les COMMANDES a gerer = sous forme de CLASS in here ari
 	this->_cmd.push_back(new FuncPing());
 	this->_cmd.push_back(new FuncJoin());
 	this->_cmd.push_back(new FuncPrivMsg());
+	this->_cmd.push_back(new FuncQuit());
 }
 
 Server::~Server()
@@ -754,7 +767,6 @@ void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	bool alrUsed;
 	std::map<int, Client*> clientMap = serv->getClientMap();
 	std::map<int, Client*>::iterator it = clientMap.begin();
-	std::cout << "client = " << client << ", bool = " << client->isFirstCo() << std::endl;
 	for (; it != clientMap.end(); it++) //check if nick is already used
 	{
 		if (vec[1] == it->second->getNickname() && it->first != client->getFd())
@@ -774,10 +786,11 @@ void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	}
 	else //not first co
 	{
-		if (alrUsed)
-			client->sendMsg(vec[1] + " :Nickname already in use.", -1);
+		if (alrUsed) //issue ERR
+			client->sendMsg(":" + client->getId() + " 433 " + client->getNickname() + " " + vec[1] + " :Nickname is already in use" + "\r", -1);
 		else
 		{
+			client->sendMsg(":" + client->getNickname() + " NICK " + vec[1] ,-1);
 			client->stringSetter(0, vec[1]);
 			client->boolSetter(1 ,true);
 		}
@@ -858,8 +871,9 @@ void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	{
 		if (it->first == vec[1])
 		{
-			client->sendMsg("You have joined the channel: " + vec[1], -1);
+			it->second->msgChannel(client->getFd(), ":" + client->getId() + " JOIN :" + vec[1] + "\r\n");
 			it->second->addClientlist(client); //add client to the clientlist (need to check about client Operator et Creator)
+			//client->sendMsg(client->getId() + " 353 " + client->getNickname + " " + channelMode + " " + channel + " :" + userList + "\r\n"); THIS IS FOR RPL NAMREPLY, NEED TO UNDERSTAND MODES FIRST
 		}
 	}
 }
@@ -876,40 +890,55 @@ FuncPrivMsg::~FuncPrivMsg()
 void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
 	Channel	*chanPtr;
-	Client	*clientPtr;
+	Client	*target;
 	vec[2].erase(0,1); //erase le ':'
 	if (vec[1].find('#') != std::string::npos) //msging in channel
 	{
-		vec[1].erase(0,1); //erase le '#'
-		chanPtr = serv->findChannel(vec[1]);
+		std::string woHash = vec[1].erase(0,1); //erase le '#'
+		chanPtr = serv->findChannel(woHash);
 		if (!chanPtr)
 		{
-			client->sendMsg("ERROR:No channel Found", -1);
+			client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[1] + " :No such channel" + "\r", -1);
 			return ;
 		}
-		clientPtr = chanPtr->findClient(client->getFd());
-		if (!clientPtr)
+		target = chanPtr->findClient(client->getFd());
+		if (!target)
 		{
 			client->sendMsg("ERROR:Sender is not part of the channel", -1);
 			return ;
 		}
-		chanPtr->msgChannel(clientPtr->getFd(), vec[2]);
+		chanPtr->msgChannel(target->getFd(), vec[2]);
 	}
 	else
 	{
-		clientPtr = serv->findClient(vec[1]);
-		if (!clientPtr)
+		target = serv->findClient(vec[1]);
+		if (!target)
 		{
-			client->sendMsg("ERROR:User not found", -1);
+			client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[1] + " :No such nick" + "\r", -1);
 			return ;
 		}
-		if (clientPtr->getNickname() == client->getNickname())
+		if (target->getNickname() == client->getNickname())
 		{	
 			client->sendMsg("ERROR:Can not send to self", -1);
 			return ;
 		}
-		client->sendMsg(":" + client->getNickname() + " PRIVMSG " + clientPtr->getNickname() + " :" + vec[2], clientPtr->getFd());
+		client->sendMsg(":" + client->getNickname() + " PRIVMSG " + target->getNickname() + " :" + vec[2], target->getFd());
 	}
 }
 
+////////////// QUIT /////////////////
+FuncQuit::FuncQuit(): Acommand("QUIT")
+{
+}
+
+FuncQuit::~FuncQuit()
+{
+}
+
+void	FuncQuit::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	(void)vec;
+	(void)client;
+	(void)serv;
+}
 //Join Function, in NICK do the registration check (for netcat)
