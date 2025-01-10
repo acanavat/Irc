@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/09 16:55:03 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/10 15:30:58 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -241,6 +241,16 @@ class	FuncQuit : public Acommand
 	public:
 	FuncQuit();
 	~FuncQuit();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+};
+
+class	FuncMode : public Acommand
+{
+	private:
+	public:
+	FuncMode();
+	~FuncMode();
 
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
 };

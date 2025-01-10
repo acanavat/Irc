@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/09 18:02:12 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/10 16:16:57 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -593,6 +593,7 @@ Server::Server() //Toute les COMMANDES a gerer = sous forme de CLASS in here ari
 	this->_cmd.push_back(new FuncJoin());
 	this->_cmd.push_back(new FuncPrivMsg());
 	this->_cmd.push_back(new FuncQuit());
+	this->_cmd.push_back(new FuncMode());
 }
 
 Server::~Server()
@@ -941,4 +942,23 @@ void	FuncQuit::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	(void)client;
 	(void)serv;
 }
-//Join Function, in NICK do the registration check (for netcat)
+
+////////////// MODE /////////////////
+FuncMode::FuncMode(): Acommand("MODE")
+{
+}
+
+FuncMode::~FuncMode()
+{
+}
+
+void	FuncMode::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	if (vec[1].at(0) != '#')
+		return ;
+	std::map<std::string, Channel*>::iterator target = serv->getChannelMap().find(vec[1]);
+	if (target == serv->getChannelMap().end())
+		client->sendMsg(":" + client->getId() + " 403 " + client->getNickname() + " " + vec[1] + " :No such channel" + "\r\n", -1);
+}
+//client cannot have same name as channel.
+//need to do client operator and creator in JOIN
