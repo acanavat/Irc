@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/13 17:12:26 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/13 18:58:21 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -210,17 +210,18 @@ void Channel::addClientlist(Client *newClient)
 	if (!newClient)
 		return ;
 	for (;it != this->clientList.end() && (*it) != newClient; it++);
-	
 	if (it != this->clientList.end() && (*it) == newClient)
 		return ;
 	this->clientList.push_back(newClient);
 }
 
-void Channel::removeClientlist(Client adiosClient)
+void Channel::removeClientlist(Client *adiosClient)
 {
+	if (this->clientList.empty())
+		return ;
 	for (std::vector<Client *>::iterator it = this->clientList.begin(); it != this->clientList.end(); it++)
 	{
-		if (*(*it) == adiosClient)
+		if ((*it) == adiosClient)
 		{
 			this->clientList.erase(it);
 			return ;
@@ -245,11 +246,13 @@ void Channel::addClientoperator(Client *newClient)
 	this->clientOperator.push_back(newClient);
 }
 
-void Channel::removeClientoperator(Client adiosClient)
+void Channel::removeClientoperator(Client *adiosClient)
 {
+	if (this->clientOperator.empty())
+		return ;
 	for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
 	{
-		if (*(*it) == adiosClient)
+		if ((*it) == adiosClient)
 		{
 			this->clientList.erase(it);
 			return ;
@@ -264,15 +267,22 @@ std::vector<Client *> Channel::getClientcreator()
 }
 void Channel::addClientcreator(Client *newClient)
 {
-	this->clientCreator.push_back(newClient);
-	this->clientOperator.push_back(newClient);
+	std::vector<Client *>::iterator it = this->clientCreator.begin();
 
+	if (!newClient)
+		return ;
+	for (;it != this->clientCreator.end() && (*it) != newClient; it++);
+	if (it != this->clientCreator.end() && (*it) == newClient)
+		return ;
+	this->clientCreator.push_back(newClient);
 }
-void Channel::removeClientcreator(Client adiosClient)
+void Channel::removeClientcreator(Client *adiosClient)
 {
+	if (this->clientCreator.empty())
+		return ;
 	for (std::vector<Client *>::iterator it = this->clientCreator.begin(); it != this->clientCreator.end(); it++)
 	{
-		if (*(*it) == adiosClient)
+		if ((*it) == adiosClient)
 		{
 			this->clientList.erase(it);
 			return ;
@@ -564,6 +574,7 @@ int main(int argc, char **argv)
 						close(fdeco);
 						delete server.getClientMap()[fdeco];
 						server.getClientMap().erase(fdeco);
+						//LOOP TOUT LES CHANNELS ET ERASE HERE
 						it = client.erase(it);
 						std::cout << "Client disconected" << std::endl;
 					}
@@ -970,11 +981,11 @@ void	FuncQuit::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 {
 	(void)vec;
 	(void)client;
-	(void)serv;
-	/*std::map<std::string, Channel*>::iterator it = serv->getChannelMap().begin();
-	for(; it != serv.getChannelMap().end(); it++)
+	std::map<std::string, Channel*>::iterator it = serv->getChannelMap().begin();
+	for(; it != serv->getChannelMap().end(); it++)
 	{
-	}*/
+		//dont remove here
+	}
 	
 }
 

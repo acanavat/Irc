@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/13 16:05:11 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/13 18:08:57 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,16 +79,16 @@ class Channel
 	
 	std::vector<Client *> &getClientlist();
 	void addClientlist(Client *newClient);
-	void removeClientlist(Client adiosClient);
+	void removeClientlist(Client *adiosClient);
 	int nbrClientlist();
 
 	std::vector<Client *> getClientoperator();
 	void addClientoperator(Client *newClient);
-	void removeClientoperator(Client adiosClient);
+	void removeClientoperator(Client *adiosClient);
 	
 	std::vector<Client *> getClientcreator();
 	void addClientcreator(Client *newClient);
-	void removeClientcreator(Client adiosClient);
+	void removeClientcreator(Client *adiosClient);
 	
 	void setShortname(std::string channel_name);
 	std::string getShortname();
