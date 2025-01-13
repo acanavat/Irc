@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/10 16:16:57 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/13 17:12:26 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -368,15 +368,18 @@ void Client::sendMsg(std::string msg, int private_msg)
 		write(this->fd, msg.c_str(), msg.size());
 	else
 		write(private_msg, msg.c_str(), msg.size());
+	std::cout << "MSG = "<< msg << std::endl;
 }
 
-void Channel::msgChannel(int fdSender , std::string msg)
+void Channel::msgChannel(int fdSender , std::string msg, int ignore)
 {
+	(void)fdSender;
 	std::vector<Client *>::iterator it = clientList.begin(); 
 	for (; it != clientList.end(); it++)
 	{
-		if ((*it)->getFd() != fdSender)
-			(*it)->sendMsg(msg, -1);
+		if (ignore && fdSender == (*it)->getFd())
+			continue;
+		(*it)->sendMsg(msg, (*it)->getFd());
 	}
 }
 void Channel::leaveChannel(Client leave)
@@ -533,7 +536,6 @@ int main(int argc, char **argv)
 					server.getClientMap().insert(std::pair<int, Client*>(new_socket, new_client));
 					client_map[new_socket] = new_client;
 					//afficher ce msg only when USER NICK PASS valides
-					send(new_socket, "Bienvenue sur mon serveur\n", 26, 0);
 					break ; 
 				}
 				else
@@ -550,6 +552,7 @@ int main(int argc, char **argv)
 						client_map[(*it).fd]->waitingRoom += std::string(buffer);
 						if (strchr(client_map[(*it).fd]->waitingRoom.c_str(), '\n'))
 						{
+							std::cout << "WAITING_ROOM = " << client_map[(*it).fd]->waitingRoom << std::endl;
 							server.rattrapeReddy(client_map[(*it).fd]->waitingRoom, client_map[(*it).fd]);
 							client_map[(*it).fd]->waitingRoom = "";
 						}
@@ -747,11 +750,8 @@ void	FuncPass::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	(void)serv;
 	if (vec[1] == assword)
 	{
-		client->sendMsg("Good password", -1);
 		client->boolSetter(0, true);
 	}
-	else
-		client->sendMsg("Bad password", -1);
 	client->tryLogin();
 }
 //////////////// NICK ////////////////
@@ -765,7 +765,8 @@ FuncNick::~FuncNick()
 
 void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
-	bool alrUsed;
+	static int	vd = 0;
+	bool alrUsed = false;
 	std::map<int, Client*> clientMap = serv->getClientMap();
 	std::map<int, Client*>::iterator it = clientMap.begin();
 	for (; it != clientMap.end(); it++) //check if nick is already used
@@ -776,9 +777,12 @@ void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	if (client->isFirstCo()) //if is first conect
 	{
 		if (alrUsed)
-		{
-			vec[1] += "_";
-			client->sendMsg("Added '_' to your nick ", -1);
+		{ 
+			std::stringstream ss;
+			ss << vd; // Insert the integer into the stringstream
+			std::string str = ss.str();
+			vec[1] += str;
+			vd++;
 		}
 		client->stringSetter(0, vec[1]);
 		client->boolSetter(1 ,true);
@@ -788,10 +792,10 @@ void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	else //not first co
 	{
 		if (alrUsed) //issue ERR
-			client->sendMsg(":" + client->getId() + " 433 " + client->getNickname() + " " + vec[1] + " :Nickname is already in use" + "\r", -1);
+			client->sendMsg(":" + client->getId() + " 433 " + client->getNickname() + " " + vec[1] + " :Nickname is already in use" + "\r", client->getFd()); //NICKNAMEINUSE
 		else
 		{
-			client->sendMsg(":" + client->getNickname() + " NICK " + vec[1] ,-1);
+			client->sendMsg(":" + client->getNickname() + " NICK " + vec[1] + "\r", client->getFd());
 			client->stringSetter(0, vec[1]);
 			client->boolSetter(1 ,true);
 		}
@@ -855,6 +859,28 @@ FuncJoin::FuncJoin() : Acommand("JOIN")
 FuncJoin::~FuncJoin()
 {
 }
+
+std::string	FuncJoin::stringOfUsers(Channel *chan) const
+{
+	std::string ret;
+	std::vector<Client *>::iterator it = chan->getClientlist().begin();
+	std::vector<Client *> tmp = chan->getClientoperator();
+	while(it != chan->getClientlist().end())
+	 {
+		std::vector<Client *>::iterator it2 = tmp.begin();
+		for (; it2 != tmp.end(); it2++)
+			if ((*it2)->getNickname() == (*it)->getNickname())
+				break ;
+		if (it2 != tmp.end())
+			ret = ret + "@" + (*it)->getNickname();
+		else
+			ret += (*it)->getNickname();
+		it++;
+		if (it != chan->getClientlist().end())
+			ret += ' ';
+	 }
+	 return (ret);
+}
 //joining multiple channels should be possible
 void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
@@ -864,17 +890,22 @@ void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	if (!chanPtr) //if chan does not exist, create it
 	{
 		chanPtr = new Channel();
-		client->sendMsg("created new channel: " + vec[1], -1);
-		serv->getChannelMap().insert(std::pair<std::string, Channel*>(vec[1].erase(0,1), chanPtr)); //created and added to the chanmap
+		chanPtr->addClientcreator(client);
+		chanPtr->addClientoperator(client);
+		serv->getChannelMap().insert(std::pair<std::string, Channel*>(vec[1], chanPtr)); //created and added to the chanmap
 	}
 	std::map<std::string, Channel*>::iterator it = serv->getChannelMap().begin();
 	for(; it != serv->getChannelMap().end(); it++)
 	{
+
+		std::cout << "CHAN = " << it->first << std::endl;
 		if (it->first == vec[1])
 		{
-			it->second->msgChannel(client->getFd(), ":" + client->getId() + " JOIN :" + vec[1] + "\r\n");
-			it->second->addClientlist(client); //add client to the clientlist (need to check about client Operator et Creator)
-			//client->sendMsg(client->getId() + " 353 " + client->getNickname + " " + channelMode + " " + channel + " :" + userList + "\r\n"); THIS IS FOR RPL NAMREPLY, NEED TO UNDERSTAND MODES FIRST
+			it->second->addClientlist(client); //add client to the clientlist)
+			std::string userList = stringOfUsers(it->second);
+			it->second->msgChannel(client->getFd(), ":" + client->getNickname() + " JOIN :" + vec[1] + "\r", 0);
+			client->sendMsg(":" + client->getId() + " 353 " + client->getNickname() + " " + "=" + " " + it->first + " :" + userList + "\r", client->getFd()); //NAMREPLY
+			client->sendMsg(":" + client->getId() + " 366 " + client->getNickname() + " " + it->first + " :End of /NAMES list" + "\r", client->getFd()); //ENDOFNAMES
 		}
 	}
 }
@@ -895,11 +926,10 @@ void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> ve
 	vec[2].erase(0,1); //erase le ':'
 	if (vec[1].find('#') != std::string::npos) //msging in channel
 	{
-		std::string woHash = vec[1].erase(0,1); //erase le '#'
-		chanPtr = serv->findChannel(woHash);
+		chanPtr = serv->findChannel(vec[1]);
 		if (!chanPtr)
 		{
-			client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[1] + " :No such channel" + "\r", -1);
+			client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[1] + " :No such channel PRIV" + "\r", -1);
 			return ;
 		}
 		target = chanPtr->findClient(client->getFd());
@@ -908,14 +938,14 @@ void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> ve
 			client->sendMsg("ERROR:Sender is not part of the channel", -1);
 			return ;
 		}
-		chanPtr->msgChannel(target->getFd(), vec[2]);
+		chanPtr->msgChannel(target->getFd(), ":" + client->getNickname() + " PRIVMSG " + vec[1] + " :" + vec[2], 1);
 	}
 	else
 	{
 		target = serv->findClient(vec[1]);
 		if (!target)
 		{
-			client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[1] + " :No such nick" + "\r", -1);
+			client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[1] + " :No such nick PRIV" + "\r", -1);
 			return ;
 		}
 		if (target->getNickname() == client->getNickname())
@@ -941,6 +971,11 @@ void	FuncQuit::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	(void)vec;
 	(void)client;
 	(void)serv;
+	/*std::map<std::string, Channel*>::iterator it = serv->getChannelMap().begin();
+	for(; it != serv.getChannelMap().end(); it++)
+	{
+	}*/
+	
 }
 
 ////////////// MODE /////////////////
@@ -958,7 +993,7 @@ void	FuncMode::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 		return ;
 	std::map<std::string, Channel*>::iterator target = serv->getChannelMap().find(vec[1]);
 	if (target == serv->getChannelMap().end())
-		client->sendMsg(":" + client->getId() + " 403 " + client->getNickname() + " " + vec[1] + " :No such channel" + "\r\n", -1);
+		client->sendMsg(":" + client->getId() + " 403 " + client->getNickname() + " " + vec[1] + " :No such channel MODE" + "\r\n", -1);
 }
 //client cannot have same name as channel.
 //need to do client operator and creator in JOIN

@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/10 15:30:58 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/13 16:05:11 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@
 #include <sstream>
 #include <map>
 #include <list>
+#include <algorithm>
 #include <iostream>
 #include <csignal>
 #include <cstdlib>
@@ -91,7 +92,7 @@ class Channel
 	
 	void setShortname(std::string channel_name);
 	std::string getShortname();
-	void msgChannel(int fdSender, std::string msg);
+	void msgChannel(int fdSender, std::string msg, int ignore);
 	void leaveChannel(Client leave);
 
 	bool getCmdl();
@@ -223,6 +224,7 @@ class	FuncJoin : public Acommand
 	~FuncJoin();
 
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+	std::string	stringOfUsers(Channel *chan) const;
 };
 
 class	FuncPrivMsg : public Acommand
