@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/13 18:08:57 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/16 17:08:52 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,34 +97,44 @@ class Channel
 
 	bool getCmdl();
 	void setCmdl(bool cmd);
-	int getLimitl();
-	void setLimitl(int newlimit);
+	int getLimit();
+	void setLimit(int newlimit);
 	
-	std::string getCmdk();
-	void setCmdk(std::string cmd);
+	std::string getMdp();
+	void setMdp(std::string newMdp);
 	void deleteMdp();
-	bool channelMdp();
 
 	std::string getTopic();
 	void setTopic(std::string new_topic, Client topic_client);
-	void printclientList();
 
 	void setTopicswitch(bool new_switch);
 	bool getTopicswitch();
 
 	void setCmdi(Client client,bool cmd);
 	bool getCmdi();
-	Client *findClient(int fd);
+
+	void printclientList();
+	Client	*findClient(int fd);
+	Client	*isOp(int fd);
+	void	addMode(char mode);
+	void	removeMode(char mode);
+	bool	checkMode(char mode);
+	std::vector<char>	getModes();
+	std::string	getModeString();
+	std::string	toString(int i);
+
+
 	private :
 	std::vector<Client *> clientList;
 	std::vector<Client *> clientOperator;
 	std::vector<Client *> clientCreator;
 	std::vector<Client *> clientInvitation;
+	std::vector<char>	modes;
 	std::string shortName;
 	bool cmdL;
-	int limitL;
-	std::string cmdK;
-	bool mdp;
+	int limit;
+	std::string _mdp;
+	bool isMdp;
 	std::string topic;
 	bool topic_switch;
 	bool cmdi;
@@ -151,6 +161,13 @@ class	Server
 	Channel	*findChannel(std::string name);
 	Client	*findClient(std::string name);
 	void	printClients();
+	template <class T> static std::string	toString(const T &value)
+	{
+		std::ostringstream oss;
+
+		oss << value;
+		return (oss.str());
+	};
 };
 
 class	Acommand
@@ -255,5 +272,6 @@ class	FuncMode : public Acommand
 	~FuncMode();
 
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+	//addMode and removeMode functions (different than those in Channel
 };
 #endif
