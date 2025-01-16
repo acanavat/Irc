@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/16 17:18:16 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/16 18:07:05 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -411,12 +411,12 @@ void Channel::leaveChannel(Client leave)
 	}
 }
 
-Client *Channel::findClient(int fd)
+Client *Channel::findClient(std::string name)
 {
 	std::vector<Client *>::iterator it = clientList.begin();
 	for(; it != clientList.end(); it++)
 	{
-		if ((*it)->getFd() == fd)
+		if ((*it)->getNickname() == name)
 			return (*it);
 	}
 	return (NULL);
@@ -1009,7 +1009,7 @@ void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> ve
 			client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[1] + " :No such channel" + "\r", client->getFd()); //NOSUCHCHANNEL
 			return ;
 		}
-		target = chanPtr->findClient(client->getFd()); //here target is sender
+		target = chanPtr->findClient(client->getNickname()); //here target is sender
 		if (!target) //checking if sender is in channel
 		{
 			client->sendMsg(":" + client->getId() + " 442 " + client->getNickname() + " " + vec[1] + " :You're not on that channel" + "\r", client->getFd()); 
@@ -1077,6 +1077,50 @@ FuncMode::~FuncMode()
 {
 }
 
+bool	FuncMode::removeMode(Channel *chan, std::vector<std::string> vec, Client *client) const
+{
+	std::string modes = vec[2];
+	if (modes.at(0) != '-') //check that it actually starts with -
+		return (false);
+	modes.erase(0, 1);
+
+	if (modes.at(0) == 'i') //remove invte
+		chan->removeMode('i');
+
+	if (modes.at(0) == 't') //topoic restrict
+		chan->removeMode('t');
+
+	if (modes.at(0) == 'k') //remove passwofr
+	{
+		chan->removeMode('k');
+		chan->deleteMdp();
+	}
+
+	if (modes.at(0) == 'l') //remove limti
+		chan->removeMode('l');
+
+	if (modes.at(0) == 'o') //revoke opeartor
+	{
+		if (vec.size() < 4) //check if victim names are given
+		{
+			client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " MODE" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+			return (false);
+		}
+
+		Client *clientPtr = chan->findClient(vec[3]);
+		if(!clientPtr)
+		{
+			client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[3] + " :No such nick" + "\r", client->getFd()); //NOSUCHNICK
+			return (false);
+		}
+		if (!chan->isOp(clientPtr->getFd()))
+			return (false);
+		chan->removeClientoperator(clientPtr);
+	}
+
+	return (true);
+}
+
 void	FuncMode::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
 	if (vec.size() < 2)
@@ -1094,7 +1138,7 @@ void	FuncMode::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 		client->sendMsg(":" + client->getId() + " 403 " + client->getNickname() + " " + vec[1] + " :No such channel" + "\r", client->getFd()); //NOSUCHCHANNEL
 		return ;	
 	}
-	if (!chanPtr->findClient(client->getFd())) //if client not in channel
+	if (!chanPtr->findClient(client->getNickname())) //if client not in channel
 	{
 		client->sendMsg(":" + client->getId() + " 442 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not on that channel" + "\r", client->getFd());
 		return ;
@@ -1112,13 +1156,17 @@ void	FuncMode::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 
 	std::string	modes = vec[2];
 	std::string	availableModes = "itkol+-";
-	//bool		updatedModes = false;
+	bool		updatedModes = false;
 
 	if (availableModes.find(modes[1]) == std::string::npos) //check if requested mode is handled
 	{
-		client->sendMsg(":" + client->getId() + " 472 " + client->getNickname() + " " + serv->toString(modes[0]) + " :is unknown mode char to me" + "\r", client->getFd()); //UNKNOWN MODE
+		client->sendMsg(":" + client->getId() + " 472 " + client->getNickname() + " " + serv->toString(modes[1]) + " :is unknown mode char to me" + "\r", client->getFd()); //UNKNOWN MODE
 		return ;
 	}
+
+	if(modes.at(0) == '-' && modes.size() > 1)
+		updatedModes = this->removeMode(chanPtr, vec, client);
 }
 //in MODE can choose to hande only 1 mode a la foid instead of multiple given in a string, but need to warn client at login
 //must parse nickname (can't start with other than letters).
+//dont forget to handle MODES in JOIN aswell

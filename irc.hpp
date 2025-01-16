@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/16 17:08:52 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/16 17:57:49 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -114,7 +114,7 @@ class Channel
 	bool getCmdi();
 
 	void printclientList();
-	Client	*findClient(int fd);
+	Client	*findClient(std::string name);
 	Client	*isOp(int fd);
 	void	addMode(char mode);
 	void	removeMode(char mode);
@@ -271,6 +271,7 @@ class	FuncMode : public Acommand
 	FuncMode();
 	~FuncMode();
 
+	bool	removeMode(Channel *chan, std::vector<std::string> vec, Client *client) const;
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
 	//addMode and removeMode functions (different than those in Channel
 };
