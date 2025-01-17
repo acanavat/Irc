@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/16 17:57:49 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/17 15:53:18 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,14 @@
 #define BUFFER_SIZE 1024
 
 std::string assword;
+
+int ft_stoi (std::string &str)
+{
+	int i;
+
+	std::istringstream(str) >> i;
+	return (i);
+}
 
 class Client
 {
@@ -98,7 +106,7 @@ class Channel
 	bool getCmdl();
 	void setCmdl(bool cmd);
 	int getLimit();
-	void setLimit(int newlimit);
+	void setLimit(unsigned int newlimit);
 	
 	std::string getMdp();
 	void setMdp(std::string newMdp);
@@ -132,7 +140,7 @@ class Channel
 	std::vector<char>	modes;
 	std::string shortName;
 	bool cmdL;
-	int limit;
+	unsigned int limit;
 	std::string _mdp;
 	bool isMdp;
 	std::string topic;
@@ -271,6 +279,7 @@ class	FuncMode : public Acommand
 	FuncMode();
 	~FuncMode();
 
+	bool	addMode(Channel *chan, std::vector<std::string> vec, Client *client) const;
 	bool	removeMode(Channel *chan, std::vector<std::string> vec, Client *client) const;
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
 	//addMode and removeMode functions (different than those in Channel

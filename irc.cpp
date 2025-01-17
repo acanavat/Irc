@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/16 18:07:05 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/17 17:21:08 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -153,7 +153,7 @@ int Channel::getLimit()
 	return this->limit;
 }
 
-void Channel::setLimit(int newLimit)
+void Channel::setLimit(unsigned int newLimit)
 {
 	this->limit = newLimit;
 }
@@ -261,7 +261,7 @@ void Channel::removeClientoperator(Client *adiosClient)
 	{
 		if ((*it) == adiosClient)
 		{
-			this->clientList.erase(it);
+			this->clientOperator.erase(it);
 			return ;
 		}
 	}
@@ -352,7 +352,7 @@ void createChannel(std::string channel_name, Client *create_channel, std::map<st
 	newChannel->addClientlist(create_channel);
 	to_edit[newChannel->getShortname()] = newChannel;
 }
-
+/*
 void destroyChannel(std::string channel_name, std::map<std::string, Channel*> &channel_list)
 {
 	for(std::map<std::string, Channel*>::iterator it = channel_list.begin(); it != channel_list.end(); it++)
@@ -377,7 +377,7 @@ void joinChannel(Client *join_channel, Channel *to_edit)
 	else
 		std::cout << join_channel->getNickname() << " " << to_edit->getTopicswitch() << " :Cannot join channel" << std::endl;
 }
-
+*/
 void Client::sendMsg(std::string msg, int private_msg)
 {
 	msg += "\n";
@@ -558,32 +558,6 @@ int main(int argc, char **argv)
     }
 
 	client.push_back(create_pollfd(server_fd, (POLLIN|POLLOUT), 0));
-	/*Client *fake_client = new Client();
-	//fake_client->setNickname("fake_client");
-	Client *fake = new Client();
-	//fake->setNickname("fake");
-	fake->setFd(-1);
-	fake_client->setFd(-2); // Un fd fictif pour un client factice
-
-	// Création de deux canaux manuellement
-		createChannel("channel1", fake_client, channel_list);
-		//channel_list["channel1"]->setLimitl(0);
-		//channel_list["channel1"]->setCmdl(true);
-		createChannel("channel2", fake_client, channel_list);
-		createChannel("test", fake, channel_list);
-	    joinChannel(fake, getChannel("channel1", &channel_list));  // Utilisez it->second pour accéder au Channel*
-		//printChannel(channel_list);
-		std::map<std::string, Channel*>::iterator ite = channel_list.begin();
-		printclientList(*(*ite).second);
-		channel_list["channclient->el1"]->leaveChannel(*fake);
-		printclientList(*(*ite).second);
-		channel_list["channel1"]->setCmdk("ZOZ");
-		channel_list["channel1"]->deleteMdp();
-		channel_list["channel1"]->channelMdp();
-		channel_list["channel1"]->setTopicswitch(true);
-		channel_list["channel1"]->setTopic("new topic", *fake);
-		channel_list["channel1"]->getTopic();
-		return 1;*/
 
 	try 
 	{
@@ -961,30 +935,56 @@ std::string	FuncJoin::stringOfUsers(Channel *chan) const
 //joining multiple channels should be possible
 void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
-	(void)vec;
-	(void)client;
+	if (vec.size() > 3)
+			client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " JOIN" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+
 	Channel *chanPtr = serv->findChannel(vec[1]);
+	std::string password;
+
+	if (vec.size() == 3)
+		password = vec[2];
+	else
+		password = "";
+
 	if (!chanPtr) //if chan does not exist, create it
 	{
+
 		chanPtr = new Channel();
+		chanPtr->setShortname(vec[1]);
 		chanPtr->addClientcreator(client);
 		chanPtr->addClientoperator(client);
+		if (password != "")
+		{
+			chanPtr->addMode('k');
+			chanPtr->setMdp(password);
+		}
 		serv->getChannelMap().insert(std::pair<std::string, Channel*>(vec[1], chanPtr)); //created and added to the chanmap
 	}
-	std::map<std::string, Channel*>::iterator it = serv->getChannelMap().begin();
-	for(; it != serv->getChannelMap().end(); it++)
+	else
 	{
-		if (it->first == vec[1])
+		if (chanPtr->checkMode('k') && password != chanPtr->getMdp()) //password
 		{
-			it->second->addClientlist(client); //add client to the clientlist)
-			std::string userList = stringOfUsers(it->second);
-			it->second->msgChannel(client->getFd(), ":" + client->getNickname() + " JOIN :" + vec[1] + "\r", 0); //JOIN
-			if (!it->second->getTopic().empty())
-				client->sendMsg(":" + client->getId() + " 332 " + client->getNickname() + " " + it->first + " :" + it->second->getTopic() + "\r", client->getFd()); //RPL TOPIC
-			client->sendMsg(":" + client->getId() + " 353 " + client->getNickname() + " " + "=" + " " + it->first + " :" + userList + "\r", client->getFd()); //NAMREPLY
-			client->sendMsg(":" + client->getId() + " 366 " + client->getNickname() + " " + it->first + " :End of /NAMES list" + "\r", client->getFd()); //ENDOFNAMES
+			client->sendMsg(":" + client->getId() + " 475 " + client->getNickname() + " " + chanPtr->getShortname() + " :Cannot join channel (+k)" + "\r", client->getFd());
+			return ;
+		}
+		if (chanPtr->checkMode('l')) //limit
+		{
+			if (chanPtr->nbrClientlist() >= chanPtr->getLimit())
+			{
+				client->sendMsg(":" + client->getId() + " 471 " + client->getNickname() + " " + chanPtr->getShortname() + " :Cannot join channel (+l)" + "\r", client->getFd());
+				return ;
+			}
 		}
 	}
+	chanPtr->addClientlist(client); //add client to the clientlist)
+	std::string userList = stringOfUsers(chanPtr);
+	chanPtr->msgChannel(client->getFd(), ":" + client->getNickname() + " JOIN :" + vec[1] + "\r", 0); //JOIN
+	if (!chanPtr->getTopic().empty())
+	{
+		client->sendMsg(":" + client->getId() + " 332 " + client->getNickname() + " " + chanPtr->getShortname() + " :" + chanPtr->getTopic() + "\r", client->getFd()); //RPL TOPIC
+	}
+	client->sendMsg(":" + client->getId() + " 353 " + client->getNickname() + " " + "=" + " " + chanPtr->getShortname() + " :" + userList + "\r", client->getFd()); //NAMREPLY
+	client->sendMsg(":" + client->getId() + " 366 " + client->getNickname() + " " + chanPtr->getShortname() + " :End of /NAMES list" + "\r", client->getFd()); //ENDOFNAMES
 }
 
 //////////////// PRIVMSG ////////////////
@@ -1077,6 +1077,76 @@ FuncMode::~FuncMode()
 {
 }
 
+bool	FuncMode::addMode(Channel *chan, std::vector<std::string> vec, Client *client) const
+{
+	std::string modes = vec[2];
+	if (modes.at(0) == '+')
+		modes.erase(0,1);
+
+	if (modes.at(0) == 'i') //set ivntie
+	{
+		if (chan->checkMode('i'))
+			return (false);
+		chan->addMode('i');
+	}
+
+	if (modes.at(0) == 't') //set tpico
+	{
+		if (chan->checkMode('t'))
+			return (false);
+		chan->addMode('t');
+	}
+
+	if (modes.at(0) == 'k') //add pasowrds
+	{
+		if (vec.size() < 4)
+		{
+			client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " MODE" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+			return (false);
+		}
+		if (chan->checkMode('k'))
+			return (false);
+		chan->addMode('k');
+		chan->setMdp(vec[3]);
+	}
+
+	if (modes.at(0) == 'l') //add lm,it
+	{
+		if (vec.size() < 4)
+		{
+			client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " MODE" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+			return (false);
+		}
+		int	limit = ft_stoi(vec[3]);
+		if (!chan->checkMode('l'))
+			chan->addMode('l');
+		chan->setLimit(limit);
+	}
+
+	if (modes.at(0) == 'o') //add orpatoree
+	{
+		if (vec.size() < 4)
+		{
+			client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " MODE" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+			return (false);
+		}
+
+		Client *clientPtr = chan->findClient(vec[3]);
+
+		if(!clientPtr)
+		{
+			client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[3] + " :No such nick" + "\r", client->getFd()); //NOSUCHNICK
+			return (false);
+		}
+		if (chan->isOp(clientPtr->getFd()))
+			return (false);
+		chan->addClientoperator(clientPtr);
+		chan->msgChannel(client->getFd(), ":" + client->getId() + " MODE " + chan->getShortname() + " " + "+o " + clientPtr->getNickname() + "\r", 0); //CHANNELMODEIS
+		return (false);
+	}
+	return (true);
+}
+
 bool	FuncMode::removeMode(Channel *chan, std::vector<std::string> vec, Client *client) const
 {
 	std::string modes = vec[2];
@@ -1085,19 +1155,33 @@ bool	FuncMode::removeMode(Channel *chan, std::vector<std::string> vec, Client *c
 	modes.erase(0, 1);
 
 	if (modes.at(0) == 'i') //remove invte
+	{
+		if (!chan->checkMode('i'))
+			return (false);
 		chan->removeMode('i');
+	}
 
 	if (modes.at(0) == 't') //topoic restrict
+	{
+		if (!chan->checkMode('t'))
+			return (false);
 		chan->removeMode('t');
+	}
 
 	if (modes.at(0) == 'k') //remove passwofr
 	{
+		if (!chan->checkMode('k'))
+			return (false);
 		chan->removeMode('k');
 		chan->deleteMdp();
 	}
 
 	if (modes.at(0) == 'l') //remove limti
+	{
+		if (!chan->checkMode('l'))
+			return (false);
 		chan->removeMode('l');
+	}
 
 	if (modes.at(0) == 'o') //revoke opeartor
 	{
@@ -1116,6 +1200,8 @@ bool	FuncMode::removeMode(Channel *chan, std::vector<std::string> vec, Client *c
 		if (!chan->isOp(clientPtr->getFd()))
 			return (false);
 		chan->removeClientoperator(clientPtr);
+		chan->msgChannel(client->getFd(), ":" + client->getId() + " MODE " + chan->getShortname() + " " + "-o " + clientPtr->getNickname() + "\r", 0); //CHANNELMODEIS
+		return (false);
 	}
 
 	return (true);
@@ -1143,17 +1229,16 @@ void	FuncMode::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 		client->sendMsg(":" + client->getId() + " 442 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not on that channel" + "\r", client->getFd());
 		return ;
 	}
-	if (!chanPtr->isOp(client->getFd())) //if client not OP of channel
-	{
-		client->sendMsg(":" + client->getId() + " 482 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not channel operator" + "\r", client->getFd());
-		return ;
-	}
 	if (vec.size() == 2) //if without modestring
 	{
 		client->sendMsg(":" + client->getId() + " 324 " + client->getNickname() + " " + chanPtr->getShortname() + " " + chanPtr->getModeString() + "\r", client->getFd()); //CHANNELMODEIS
 		return ;
 	}
-
+	if (!chanPtr->isOp(client->getFd())) //if client not OP of channel
+	{
+		client->sendMsg(":" + client->getId() + " 482 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not channel operator" + "\r", client->getFd());
+		return ;
+	}
 	std::string	modes = vec[2];
 	std::string	availableModes = "itkol+-";
 	bool		updatedModes = false;
@@ -1164,9 +1249,12 @@ void	FuncMode::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 		return ;
 	}
 
-	if(modes.at(0) == '-' && modes.size() > 1)
+	if (modes.at(0) == '-' && modes.size() > 1)
 		updatedModes = this->removeMode(chanPtr, vec, client);
+	else if (modes.size() > 1)
+		updatedModes = this->addMode(chanPtr, vec, client);
+	if (updatedModes)
+		chanPtr->msgChannel(client->getFd(), ":" + client->getId() + " 324 " + client->getNickname() + " " + chanPtr->getShortname() + " " + chanPtr->getModeString() + "\r", 0); //CHANNELMODEIS
 }
 //in MODE can choose to hande only 1 mode a la foid instead of multiple given in a string, but need to warn client at login
 //must parse nickname (can't start with other than letters).
-//dont forget to handle MODES in JOIN aswell
