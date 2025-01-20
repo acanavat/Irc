@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/17 17:21:08 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/20 15:58:48 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -127,7 +127,7 @@ Channel::Channel()
 {
 	this->cmdL = false;
 	this->isMdp = false;
-	this->topic_switch = false;
+	//this->topic_switch = false;
 	this->cmdi = false;
 	this->addMode('n');
 	this->limit = 0;
@@ -177,27 +177,12 @@ void Channel::deleteMdp()
 
 std::string Channel::getTopic()
 {
-	std::cout << this->topic << std::endl;
 	return this->topic;
 }
 
-void Channel::setTopic(std::string new_topic, Client topic_client)
+void Channel::setTopic(std::string new_topic)
 {
-	if (!getTopicswitch())
-	{
-		for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
-		{
-			if (*(*it) == topic_client)
-			{
-				std::cout << "topic changed by " << topic_client.getNickname() << std::endl;
-				this->topic = new_topic;
-				return ;
-			}
-		}
-	}
-	else
-		this->topic = new_topic;
-	topic_client.sendMsg(topic_client.getNickname() + " :Permission Denied- You're not an IRC operator", -1);
+	this->topic = new_topic;
 }
 
 std::vector<Client *> &Channel::getClientlist()
@@ -305,6 +290,7 @@ std::string Channel::getShortname()
 {
 	return this->shortName;
 }
+/*
 void Channel::setTopicswitch(bool new_switch)
 {
 	this->topic_switch = new_switch;
@@ -313,7 +299,7 @@ bool Channel::getTopicswitch()
 {
 	return this->topic_switch;
 }
-
+*/
 void Channel::setCmdi(Client client, bool cmd)
 {
 	for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
@@ -648,6 +634,7 @@ Server::Server() //Toute les COMMANDES a gerer = sous forme de CLASS in here ari
 	this->_cmd.push_back(new FuncPrivMsg());
 	this->_cmd.push_back(new FuncQuit());
 	this->_cmd.push_back(new FuncMode());
+	this->_cmd.push_back(new FuncTopic());
 }
 
 Server::~Server()
@@ -814,12 +801,29 @@ FuncNick::~FuncNick()
 {
 }
 
+int		FuncNick::nickParser(std::string nick) const
+{
+	if (nick[0] == '#' || nick[0] == ':' || nick[0] == '$')
+		return (1);
+	for (size_t i = 0; i != nick.length(); i++)
+	{
+		if (nick[i] == ' ' ||nick[i] == '*' ||nick[i] == '?' ||nick[i] == '!' ||nick[i] == ',' ||nick[i] == '@' ||nick[i] == '.')
+			return (1);
+	}
+	return (0);
+}
+
 void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
 	static int	vd = 0;
 	bool alrUsed = false;
 	std::map<int, Client*> clientMap = serv->getClientMap();
 	std::map<int, Client*>::iterator it = clientMap.begin();
+	if (nickParser(vec[1]))
+	{
+		client->sendMsg(":" + client->getId() + " 432 " + client->getNickname() + " " + vec[1] + " :Erroneus nickname" + "\r", client->getFd());
+		return ;
+	}
 	for (; it != clientMap.end(); it++) //check if nick is already used
 	{
 		if (vec[1] == it->second->getNickname() && it->first != client->getFd())
@@ -1256,5 +1260,63 @@ void	FuncMode::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	if (updatedModes)
 		chanPtr->msgChannel(client->getFd(), ":" + client->getId() + " 324 " + client->getNickname() + " " + chanPtr->getShortname() + " " + chanPtr->getModeString() + "\r", 0); //CHANNELMODEIS
 }
+
+/////////////////// TOPIC ////////////////////
+FuncTopic::FuncTopic(): Acommand("TOPIC")
+{
+}
+
+FuncTopic::~FuncTopic()
+{
+}
+
+void	FuncTopic::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	if (vec.size() < 2)
+	{
+		client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " TOPIC" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+	}
+
+	Channel *chanPtr = serv->findChannel(vec[1]);
+
+	if (!chanPtr)
+	{
+		client->sendMsg(":" + client->getId() + " 403 " + client->getNickname() + " " + vec[1] + " :No such channel" + "\r", client->getFd()); //NOSUCHCHANNEL
+		return ;
+	}
+	if (vec.size() == 2)
+	{
+		if (chanPtr->getTopic().empty())
+			client->sendMsg(":" + client->getId() + " 331 " + client->getNickname() + " " + chanPtr->getShortname() + " :No topic is set." + "\r", client->getFd()); //NOTOPIC
+		else
+			client->sendMsg(":" + client->getId() + " 332 " + client->getNickname() + " " + chanPtr->getShortname() + " :" + chanPtr->getTopic() + "\r", client->getFd()); //TOPIC
+		return ;
+	}
+
+	if (!chanPtr->findClient(client->getNickname())) //check if client in chan
+	{
+		client->sendMsg(":" + client->getId() + " 442 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not on that channel" + "\r", client->getFd()); //NOTONCHANNEL
+		return ;
+	}
+	if (!chanPtr->checkMode('t') && !chanPtr->isOp(client->getFd())) //check if is OP
+	{
+		client->sendMsg(":" + client->getId() + " 482 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not channel operator" + "\r", client->getFd());
+		return ;
+	}
+
+	std::string topic;
+	for (size_t i = 2; i < vec.size(); i++)
+	{
+		if (!topic.empty())
+			topic.append(" ");
+		topic.append(vec[i]);
+	}
+
+	chanPtr->setTopic(topic[0] == ':' ? topic.erase(0, 1) : topic);
+	chanPtr->msgChannel(client->getFd(), ":" + client->getId() + " TOPIC " + chanPtr->getShortname() + " " + topic + "\r", 0);
+}
+
 //in MODE can choose to hande only 1 mode a la foid instead of multiple given in a string, but need to warn client at login
-//must parse nickname (can't start with other than letters).
+//must parse nickname (can't start with other than letters). ERROR qd ca commence AVEC ESPACE ca met nicname vide
+//privMSG error: not the entire msgm qui est envoyey
+//manque message d'erreur quand mauvais mot de ass

@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/17 15:53:18 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/20 15:57:38 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,10 +113,10 @@ class Channel
 	void deleteMdp();
 
 	std::string getTopic();
-	void setTopic(std::string new_topic, Client topic_client);
+	void setTopic(std::string new_topic);
 
-	void setTopicswitch(bool new_switch);
-	bool getTopicswitch();
+	//void setTopicswitch(bool new_switch);
+	//bool getTopicswitch();
 
 	void setCmdi(Client client,bool cmd);
 	bool getCmdi();
@@ -144,7 +144,7 @@ class Channel
 	std::string _mdp;
 	bool isMdp;
 	std::string topic;
-	bool topic_switch;
+	//bool topic_switch;
 	bool cmdi;
 };
 
@@ -219,6 +219,7 @@ class	FuncNick : public Acommand
 	~FuncNick();
 
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+int		nickParser(std::string nick) const;
 };
 
 class	FuncUser : public Acommand
@@ -284,4 +285,15 @@ class	FuncMode : public Acommand
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
 	//addMode and removeMode functions (different than those in Channel
 };
+
+class	FuncTopic : public Acommand
+{
+	private:
+	public:
+	FuncTopic();
+	~FuncTopic();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+};
+
 #endif
