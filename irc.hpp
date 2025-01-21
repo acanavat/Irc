@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/21 14:51:36 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/21 17:51:50 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -166,6 +166,7 @@ class	Server
 	Channel	*findChannel(std::string name);
 	Client	*findClient(std::string name, int fd);
 	void	removeFromChans(int fd);
+	void	removeEmptyChans();
 	void	printClients();
 	template <class T> static std::string	toString(const T &value)
 	{
@@ -295,4 +296,13 @@ class	FuncTopic : public Acommand
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
 };
 
+class	FuncInvite : public Acommand
+{
+	private:
+	public:
+	FuncInvite();
+	~FuncInvite();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+};
 #endif

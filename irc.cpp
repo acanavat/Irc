@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/21 14:52:10 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/21 18:26:47 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -512,6 +512,7 @@ int main(int argc, char **argv)
 	{
 		while (1)
 		{
+			server.removeEmptyChans();
 			if (poll(&(*client.begin()), client.size(), 0) < 0)
 		        	std::cerr << "Error : poll est mourant" << std::endl;
 				//iterateur pour voir si evenement en cours
@@ -535,7 +536,6 @@ int main(int argc, char **argv)
 					new_client->setFd(new_socket);
 					server.getClientMap().insert(std::pair<int, Client*>(new_socket, new_client));
 					client_map[new_socket] = new_client;
-					//afficher ce msg only when USER NICK PASS valides
 					break ; 
 				}
 				else
@@ -597,6 +597,7 @@ Server::Server() //Toute les COMMANDES a gerer = sous forme de CLASS in here ari
 	this->_cmd.push_back(new FuncQuit());
 	this->_cmd.push_back(new FuncMode());
 	this->_cmd.push_back(new FuncTopic());
+	this->_cmd.push_back(new FuncInvite());
 }
 
 Server::~Server()
@@ -645,7 +646,7 @@ void	Server::Parser(std::string cmd, Client *client) //isole les commandes avec 
 void	Server::CmdParser(std::string cmd, Client *client)
 {
 	cmd = cmd.erase(cmd.size() - 1);
-	std::cout << "PARSED CMD = " << cmd << std::endl;
+	//std::cout << "PARSED CMD = " << cmd << std::endl;
 	if (cmd.find(' ') == std::string::npos) //each CMD must have at least 1 arg
 	{
 		const char *msg = "CMD is missing arguments \n";
@@ -722,6 +723,28 @@ void	Server::removeFromChans(int fd)
 
 		if (chanPtr->findClient(client->getNickname()))
 			chanPtr->removeClient(client);
+	}
+}
+
+void	Server::removeEmptyChans()
+{
+	std::map<std::string, Channel*>::iterator currentIt = chanMap.begin();
+	std::map<std::string, Channel*>::iterator nextIt;
+
+	while (currentIt != chanMap.end())
+	{
+		nextIt = currentIt;
+		nextIt++;
+
+		Channel *chan = currentIt->second;
+
+		if (chan->nbrClientlist() == 0)
+		{
+			delete chan;
+			chanMap.erase(currentIt++);
+		}
+		else
+			currentIt = nextIt;
 	}
 }
 
@@ -889,7 +912,6 @@ void	FuncPing::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	(void)serv;
 	(void)vec;
 	client->sendMsg(":server PONG :" + client->getNickname(), -1);
-	serv->printClients();
 }
 
 //////////////// JOIN ////////////////
@@ -1316,4 +1338,44 @@ void	FuncTopic::exec(Server *serv, Client *client, std::vector<std::string> vec)
 	chanPtr->msgChannel(client->getFd(), ":" + client->getId() + " TOPIC " + chanPtr->getShortname() + " " + topic + "\r", 0);
 }
 
-//should be possible to JOIN multiple channel at once (ask Brandon if it can be restricted)
+/////////// INVITE //////////////
+FuncInvite::FuncInvite(): Acommand("INVITE")
+{
+}
+
+FuncInvite::~FuncInvite()
+{
+}
+
+void	FuncInvite::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	if (vec.size() < 3)
+	{
+		client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " INVITE" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+		return ;
+	}
+
+	Channel *chanPtr = serv->findChannel(vec[2]);
+	//Client	*target = serv->findClient(vec[1], 0);
+
+	if (!chanPtr) //if no channel
+	{
+		client->sendMsg(":" + client->getId() + " 403 " + client->getNickname() + " " + vec[2] + " :No such channel" + "\r", client->getFd()); //NOSUCHCHANNEL
+		return ;
+	}
+	if (!chanPtr->findClient(client->getNickname())) //if inviter is no part of channel
+	{
+		client->sendMsg(":" + client->getId() + " 442 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not on that channel" + "\r", client->getFd()); //NOTONCHANNEL
+		return ;
+	}
+	if (chanPtr->findClient(vec[1])) //if invitee is already in channel
+	{
+		client->sendMsg(":" + client->getId() + " 443 " + client->getNickname() + " " + chanPtr->getShortname() + " :is already on channel" + "\r", client->getFd()); //USERONCHANNEL
+		return ;
+	}
+}
+//some RPLs should be sent not only on client's screen but also channel screen but only visible to client.
+//finish INVITE duh
+//corriger le critical when joining channel
+//should be possible to JOIN multiple channel at once (as k Brandon if it can be restricted)
+//need to do faster deconnection
