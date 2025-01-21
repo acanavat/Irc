@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/20 15:58:48 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/21 14:52:10 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -91,8 +91,9 @@ void	Client::tryLogin()
 {
 	if (_userBool && _nickBool && _passBool)
 	{
-		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _username + "@localhost", -1);
+		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _username + "@localhost", getFd());
 		std::string id = "ID_" + nickname + "_ID";
+		sendMsg("NOTICE: only 1(one) mode can be added/removed using the command MODE", getFd());
 		stringSetter(5, id);
 	}
 }
@@ -127,7 +128,6 @@ Channel::Channel()
 {
 	this->cmdL = false;
 	this->isMdp = false;
-	//this->topic_switch = false;
 	this->cmdi = false;
 	this->addMode('n');
 	this->limit = 0;
@@ -197,20 +197,11 @@ int Channel::nbrClientlist()
 
 void Channel::addClientlist(Client *newClient)
 {
-	/*std::vector<Client *>::iterator it = this->clientList.begin();
-
-	if (!newClient)
-		return ;
-	for (;it != this->clientList.end() && (*it) != newClient; it++);
-	if (it != this->clientList.end() && (*it) == newClient)
-		return ;*/
 	this->clientList.push_back(newClient);
 }
 
 void Channel::removeClientlist(Client *adiosClient)
 {
-	if (this->clientList.empty())
-		return ;
 	for (std::vector<Client *>::iterator it = this->clientList.begin(); it != this->clientList.end(); it++)
 	{
 		if ((*it) == adiosClient)
@@ -268,10 +259,9 @@ void Channel::addClientcreator(Client *newClient)
 		return ;
 	this->clientCreator.push_back(newClient);
 }
+
 void Channel::removeClientcreator(Client *adiosClient)
 {
-	if (this->clientCreator.empty())
-		return ;
 	for (std::vector<Client *>::iterator it = this->clientCreator.begin(); it != this->clientCreator.end(); it++)
 	{
 		if ((*it) == adiosClient)
@@ -281,6 +271,7 @@ void Channel::removeClientcreator(Client *adiosClient)
 		}
 	}
 }
+
 void Channel::setShortname(std::string name)
 {
 	this->shortName = name;
@@ -290,16 +281,7 @@ std::string Channel::getShortname()
 {
 	return this->shortName;
 }
-/*
-void Channel::setTopicswitch(bool new_switch)
-{
-	this->topic_switch = new_switch;
-}
-bool Channel::getTopicswitch()
-{
-	return this->topic_switch;
-}
-*/
+
 void Channel::setCmdi(Client client, bool cmd)
 {
 	for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
@@ -315,9 +297,9 @@ void Channel::setCmdi(Client client, bool cmd)
 
 bool Channel::getCmdi()
 {
-
 	return this->cmdi;
 }
+
 pollfd create_pollfd(int fd, short events, short revents)
 {
 	pollfd init;
@@ -338,32 +320,7 @@ void createChannel(std::string channel_name, Client *create_channel, std::map<st
 	newChannel->addClientlist(create_channel);
 	to_edit[newChannel->getShortname()] = newChannel;
 }
-/*
-void destroyChannel(std::string channel_name, std::map<std::string, Channel*> &channel_list)
-{
-	for(std::map<std::string, Channel*>::iterator it = channel_list.begin(); it != channel_list.end(); it++)
-	{
-		if ((*it).first == channel_name)
-		{
-			delete((*it).second);
-			channel_list.erase((*it).first);
-			return ;
-		}
-	}
-}
 
-void joinChannel(Client *join_channel, Channel *to_edit)
-{
-	if (!(to_edit->getCmdl()))
-		to_edit->addClientlist(join_channel);
-	else if (to_edit->getLimit() >= to_edit->nbrClientlist())
-	{
-		to_edit->addClientlist(join_channel);
-	}
-	else
-		std::cout << join_channel->getNickname() << " " << to_edit->getTopicswitch() << " :Cannot join channel" << std::endl;
-}
-*/
 void Client::sendMsg(std::string msg, int private_msg)
 {
 	msg += "\n";
@@ -406,6 +363,20 @@ Client *Channel::findClient(std::string name)
 			return (*it);
 	}
 	return (NULL);
+}
+
+void	Channel::removeClient(Client *client)
+{
+	if (std::find(clientList.begin(), clientList.end(), client) == clientList.end())
+		return ;
+	for(std::vector<Client *>::iterator it = clientList.begin(); it != clientList.end(); it++)
+	{
+		if (*it == client)
+		{
+			clientList.erase(it);
+			return ;
+		}
+	}
 }
 
 Client	*Channel::isOp(int fd)
@@ -469,7 +440,7 @@ std::string	Channel::toString(int i)
 	ss << i;
 	return (ss.str());
 }
-
+/*
 void printChannel(std::map<std::string, Channel*> &channel_list)
 {
 	for(std::map<std::string, Channel*>::iterator it = channel_list.begin(); it != channel_list.end(); it++)
@@ -477,6 +448,7 @@ void printChannel(std::map<std::string, Channel*> &channel_list)
 		std::cout << "Server name : " << (*it).first << std::endl;
 	}
 }
+*/
 
 Channel *getChannel(std::string name, std::map<std::string, Channel*> *channel_list)
 {
@@ -488,15 +460,6 @@ Channel *getChannel(std::string name, std::map<std::string, Channel*> *channel_l
 	return (NULL);
 }
 
-void printclientList(Channel client_list)
-{
-	std::vector<Client *> print;
-	print = client_list.getClientlist();
-	for(size_t x = 0; x < print.size(); x++)
-	{
-		std::cout << print[x]->getNickname() << std::endl;
-	}
-}
 void signalHandler(int signum) 
 {
 	(void)signum;
@@ -568,7 +531,6 @@ int main(int argc, char **argv)
 					}
 
 					client.push_back(create_pollfd(new_socket, (POLLIN|POLLOUT), 0)); // remplie le vector de notre fd
-					std::cout << "New client is here" << std::endl;
 					Client *new_client = new(Client);
 					new_client->setFd(new_socket);
 					server.getClientMap().insert(std::pair<int, Client*>(new_socket, new_client));
@@ -598,7 +560,7 @@ int main(int argc, char **argv)
 					else if (n == 0) //if (n == 0) //deco client
 					{
 						int fdeco = (*it).fd;
-						//LOOP TOUT LES CHANNELS ET ERASE from CHANNEL HERE
+						server.removeFromChans(fdeco);
 						close(fdeco);
 						delete server.getClientMap()[fdeco];
 						server.getClientMap().erase(fdeco);
@@ -722,13 +684,21 @@ Channel	*Server::findChannel(std::string name)
 	return (NULL);
 }
 
-Client	*Server::findClient(std::string name)
+Client	*Server::findClient(std::string name, int fd)
 {
 	std::map<int, Client*>::iterator it = clientMap.begin();
 	for (; it != clientMap.end(); it++)
 	{
-		if (it->second->getNickname() == name)
-			return (it->second);
+		if (fd)
+		{
+			if (it->second->getFd() == fd)
+				return (it->second);
+		}
+		else
+		{
+			if (it->second->getNickname() == name)
+				return (it->second);
+		}
 	}
 	return (NULL);
 }
@@ -739,6 +709,20 @@ void	Server::printClients()
 	std::map<int, Client*>::iterator it = clientMap.begin();
 	for (; it != clientMap.end(); it++)
 		std::cout << "NICK = " << it->second->getNickname() << std::endl;
+}
+
+void	Server::removeFromChans(int fd)
+{
+	Client *client = findClient("null", fd);
+	if (!client)
+		return ;
+	for (std::map<std::string, Channel*>::iterator it = chanMap.begin(); it != chanMap.end(); it++)
+	{
+		Channel *chanPtr = it->second;
+
+		if (chanPtr->findClient(client->getNickname()))
+			chanPtr->removeClient(client);
+	}
 }
 
 //////////////// ACOMMAND ////////////////
@@ -789,8 +773,10 @@ void	FuncPass::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	if (vec[1] == assword)
 	{
 		client->boolSetter(0, true);
+		client->tryLogin();
 	}
-	client->tryLogin();
+	else
+		client->sendMsg(":" + client->getId() + " 464 " + client->getNickname() + " :Password incorrect" + "\r", client->getFd());
 }
 //////////////// NICK ////////////////
 FuncNick::FuncNick(): Acommand("NICK")
@@ -803,7 +789,7 @@ FuncNick::~FuncNick()
 
 int		FuncNick::nickParser(std::string nick) const
 {
-	if (nick[0] == '#' || nick[0] == ':' || nick[0] == '$')
+	if (nick[0] == '#' || nick[0] == ':' || nick[0] == '$' || nick.empty())
 		return (1);
 	for (size_t i = 0; i != nick.length(); i++)
 	{
@@ -936,7 +922,7 @@ std::string	FuncJoin::stringOfUsers(Channel *chan) const
 	 }
 	 return (ret);
 }
-//joining multiple channels should be possible
+
 void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
 	if (vec.size() > 3)
@@ -1000,11 +986,25 @@ FuncPrivMsg::~FuncPrivMsg()
 {
 }
 
+std::string	FuncPrivMsg::createMsg(std::vector<std::string> vec) const
+{
+	std::string ret;
+	std::vector<std::string>::iterator it = vec.begin() + 2;
+	for (; it != vec.end(); it++)
+	{
+		ret += (*it);
+		if (it != vec.end())
+			ret += " ";
+	}
+	return (ret);
+}
+
 void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
 	Channel	*chanPtr;
 	Client	*target;
 	vec[2].erase(0,1); //erase le ':'
+	std::string msg = createMsg(vec); 
 	if (vec[1].find('#') != std::string::npos) //msging in channel
 	{
 		chanPtr = serv->findChannel(vec[1]);
@@ -1019,17 +1019,17 @@ void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> ve
 			client->sendMsg(":" + client->getId() + " 442 " + client->getNickname() + " " + vec[1] + " :You're not on that channel" + "\r", client->getFd()); 
 			return ;
 		}
-		chanPtr->msgChannel(target->getFd(), ":" + client->getNickname() + " PRIVMSG " + vec[1] + " :" + vec[2], 1);
+		chanPtr->msgChannel(target->getFd(), ":" + client->getNickname() + " PRIVMSG " + vec[1] + " :" + msg, 1);
 	}
 	else
 	{
-		target = serv->findClient(vec[1]); //here target is receiver
+		target = serv->findClient(vec[1], 0); //here target is receiver
 		if (!target) 
 		{
 			client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[1] + " :No such nick" + "\r", client->getFd()); //NOSUCHNICK
 			return ;
 		}
-		client->sendMsg(":" + client->getNickname() + " PRIVMSG " + target->getNickname() + " :" + vec[2], target->getFd());
+		client->sendMsg(":" + client->getNickname() + " PRIVMSG " + target->getNickname() + " :" + msg, target->getFd());
 	}
 }
 
@@ -1279,7 +1279,7 @@ void	FuncTopic::exec(Server *serv, Client *client, std::vector<std::string> vec)
 
 	Channel *chanPtr = serv->findChannel(vec[1]);
 
-	if (!chanPtr)
+	if (!chanPtr || vec[2].empty())
 	{
 		client->sendMsg(":" + client->getId() + " 403 " + client->getNickname() + " " + vec[1] + " :No such channel" + "\r", client->getFd()); //NOSUCHCHANNEL
 		return ;
@@ -1316,7 +1316,4 @@ void	FuncTopic::exec(Server *serv, Client *client, std::vector<std::string> vec)
 	chanPtr->msgChannel(client->getFd(), ":" + client->getId() + " TOPIC " + chanPtr->getShortname() + " " + topic + "\r", 0);
 }
 
-//in MODE can choose to hande only 1 mode a la foid instead of multiple given in a string, but need to warn client at login
-//must parse nickname (can't start with other than letters). ERROR qd ca commence AVEC ESPACE ca met nicname vide
-//privMSG error: not the entire msgm qui est envoyey
-//manque message d'erreur quand mauvais mot de ass
+//should be possible to JOIN multiple channel at once (ask Brandon if it can be restricted)

@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/20 15:57:38 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/21 14:51:36 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -115,13 +115,11 @@ class Channel
 	std::string getTopic();
 	void setTopic(std::string new_topic);
 
-	//void setTopicswitch(bool new_switch);
-	//bool getTopicswitch();
-
 	void setCmdi(Client client,bool cmd);
 	bool getCmdi();
 
-	void printclientList();
+	void	removeClient(Client *client);
+	void	printclientList();
 	Client	*findClient(std::string name);
 	Client	*isOp(int fd);
 	void	addMode(char mode);
@@ -144,7 +142,6 @@ class Channel
 	std::string _mdp;
 	bool isMdp;
 	std::string topic;
-	//bool topic_switch;
 	bool cmdi;
 };
 
@@ -167,7 +164,8 @@ class	Server
 	void	Parser(std::string cmd, Client *client);
 	void	whichCmd(std::vector<std::string> vec, Client *client);
 	Channel	*findChannel(std::string name);
-	Client	*findClient(std::string name);
+	Client	*findClient(std::string name, int fd);
+	void	removeFromChans(int fd);
 	void	printClients();
 	template <class T> static std::string	toString(const T &value)
 	{
@@ -260,6 +258,7 @@ class	FuncPrivMsg : public Acommand
 	FuncPrivMsg();
 	~FuncPrivMsg();
 
+	std::string	createMsg(std::vector<std::string> vec) const;
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
 };
 
