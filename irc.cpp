@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/21 18:26:47 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/23 16:30:16 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -91,7 +91,8 @@ void	Client::tryLogin()
 {
 	if (_userBool && _nickBool && _passBool)
 	{
-		sendMsg(":server 001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _username + "@localhost", getFd());
+		sendMsg("001 " + nickname + " :Welcome to the Internet Relay Network :" + nickname + "!" + _username + "@localhost", fd); //WELCOME
+		sendMsg("002 " + nickname + " :Your host is " + "IRCMammaMia (localhost), running version 42.24" + "\r", fd); //YOURHOST
 		std::string id = "ID_" + nickname + "_ID";
 		sendMsg("NOTICE: only 1(one) mode can be added/removed using the command MODE", getFd());
 		stringSetter(5, id);
@@ -126,9 +127,7 @@ bool Client::operator!=(const Client &first)
 
 Channel::Channel()
 {
-	this->cmdL = false;
 	this->isMdp = false;
-	this->cmdi = false;
 	this->addMode('n');
 	this->limit = 0;
 	this->_mdp = "";
@@ -136,16 +135,6 @@ Channel::Channel()
 
 Channel::~Channel()
 {
-}
-
-bool Channel::getCmdl()
-{
-	return this->cmdL;
-}
-
-void Channel::setCmdl(bool cmd)
-{
-	this->cmdL = cmd;
 }
 
 int Channel::getLimit()
@@ -282,25 +271,27 @@ std::string Channel::getShortname()
 	return this->shortName;
 }
 
-void Channel::setCmdi(Client client, bool cmd)
+void	Channel::addInvite(Client *client)
 {
-	for (std::vector<Client *>::iterator it = this->clientOperator.begin(); it != this->clientOperator.end(); it++)
-	{
-		if (*(*it) == client)
-		{
-			this->cmdi = cmd;
-			this->clientInvitation.push_back(&client);
-			return ;
-		}
-	}
+	if (std::find(clientInvitation.begin(), clientInvitation.end(), client->getNickname()) != clientInvitation.end())
+		return ;
+	clientInvitation.push_back(client->getNickname());
 }
 
-bool Channel::getCmdi()
+void	Channel::removeInvite(Client *client)
 {
-	return this->cmdi;
+	std::vector<std::string>::iterator it = std::find(clientInvitation.begin(), clientInvitation.end(), client->getNickname());
+	if (it == clientInvitation.end())
+		return ;
+	clientInvitation.erase(it);
 }
 
-pollfd create_pollfd(int fd, short events, short revents)
+bool	Channel::isInvited(Client *client)
+{
+	return (std::find(clientInvitation.begin(), clientInvitation.end(), client->getNickname()) != clientInvitation.end());
+}
+
+pollfd	create_pollfd(int fd, short events, short revents)
 {
 	pollfd init;
 	init.fd = fd;
@@ -331,13 +322,14 @@ void Client::sendMsg(std::string msg, int private_msg)
 	std::cout << "MSG = "<< msg << std::endl;
 }
 
-void Channel::msgChannel(int fdSender , std::string msg, int ignore)
+void Channel::msgChannel(int fdSender, std::string msg, int ignore)
 {
 	std::vector<Client *>::iterator it = clientList.begin(); 
 	for (; it != clientList.end(); it++)
 	{
 		if (ignore && fdSender == (*it)->getFd())
 			continue;
+		else
 		(*it)->sendMsg(msg, (*it)->getFd());
 	}
 }
@@ -947,7 +939,7 @@ std::string	FuncJoin::stringOfUsers(Channel *chan) const
 
 void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
-	if (vec.size() > 3)
+	if (vec.size() < 2)
 			client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " JOIN" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
 
 	Channel *chanPtr = serv->findChannel(vec[1]);
@@ -1322,7 +1314,7 @@ void	FuncTopic::exec(Server *serv, Client *client, std::vector<std::string> vec)
 	}
 	if (!chanPtr->checkMode('t') && !chanPtr->isOp(client->getFd())) //check if is OP
 	{
-		client->sendMsg(":" + client->getId() + " 482 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not channel operator" + "\r", client->getFd());
+		client->sendMsg(":" + client->getId() + " 482 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not channel operator" + "\r", client->getFd()); //CHANOPRIVSNEEDED
 		return ;
 	}
 
@@ -1356,11 +1348,16 @@ void	FuncInvite::exec(Server *serv, Client *client, std::vector<std::string> vec
 	}
 
 	Channel *chanPtr = serv->findChannel(vec[2]);
-	//Client	*target = serv->findClient(vec[1], 0);
+	Client	*target = serv->findClient(vec[1], 0);
 
-	if (!chanPtr) //if no channel
+	if (!chanPtr)
 	{
 		client->sendMsg(":" + client->getId() + " 403 " + client->getNickname() + " " + vec[2] + " :No such channel" + "\r", client->getFd()); //NOSUCHCHANNEL
+		return ;
+	}
+	if (!target)
+	{
+		client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[1] + " :No such nick" + "\r", client->getFd()); //NOSUCHNICK
 		return ;
 	}
 	if (!chanPtr->findClient(client->getNickname())) //if inviter is no part of channel
@@ -1368,14 +1365,22 @@ void	FuncInvite::exec(Server *serv, Client *client, std::vector<std::string> vec
 		client->sendMsg(":" + client->getId() + " 442 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not on that channel" + "\r", client->getFd()); //NOTONCHANNEL
 		return ;
 	}
+	if (chanPtr->checkMode('i') && !chanPtr->isOp(client->getFd())) //if client is not OP
+	{	
+		client->sendMsg(":" + client->getId() + " 482 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not channel operator" + "\r", client->getFd()); //CHANOPRIVSNEEDED
+	}
 	if (chanPtr->findClient(vec[1])) //if invitee is already in channel
 	{
 		client->sendMsg(":" + client->getId() + " 443 " + client->getNickname() + " " + chanPtr->getShortname() + " :is already on channel" + "\r", client->getFd()); //USERONCHANNEL
 		return ;
 	}
+
+	target->sendMsg(":" + client->getId() + " INVITE " + target->getNickname() + " " + chanPtr->getShortname() + "\r", target->getFd());
+	client->sendMsg(":" + client->getId() + " 341 " + client->getNickname() + " " + chanPtr->getShortname() + " " + target->getNickname() + "\r", client->getFd()); //INVITING
+	if (!chanPtr->isInvited(target))
+		chanPtr->addInvite(target);
 }
 //some RPLs should be sent not only on client's screen but also channel screen but only visible to client.
-//finish INVITE duh
-//corriger le critical when joining channel
+//corriger le critical when joining channel -> It might be problem avec ordi -> when connect to liberachat hsotname problem aswell
 //should be possible to JOIN multiple channel at once (as k Brandon if it can be restricted)
 //need to do faster deconnection

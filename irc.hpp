@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/21 17:51:50 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/23 16:29:06 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -103,8 +103,6 @@ class Channel
 	void msgChannel(int fdSender, std::string msg, int ignore);
 	void leaveChannel(Client leave);
 
-	bool getCmdl();
-	void setCmdl(bool cmd);
 	int getLimit();
 	void setLimit(unsigned int newlimit);
 	
@@ -115,8 +113,9 @@ class Channel
 	std::string getTopic();
 	void setTopic(std::string new_topic);
 
-	void setCmdi(Client client,bool cmd);
-	bool getCmdi();
+	void addInvite(Client *client);
+	void removeInvite(Client *client);
+	bool isInvited(Client *client);
 
 	void	removeClient(Client *client);
 	void	printclientList();
@@ -134,15 +133,13 @@ class Channel
 	std::vector<Client *> clientList;
 	std::vector<Client *> clientOperator;
 	std::vector<Client *> clientCreator;
-	std::vector<Client *> clientInvitation;
+	std::vector<std::string> clientInvitation;
 	std::vector<char>	modes;
 	std::string shortName;
-	bool cmdL;
 	unsigned int limit;
 	std::string _mdp;
 	bool isMdp;
 	std::string topic;
-	bool cmdi;
 };
 
 class	Acommand; //cringe (defined here pcq class Server needs Acommand, but Acommand needs class Server)
