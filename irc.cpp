@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/23 16:30:16 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/24 18:08:31 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,6 +87,10 @@ void Client::boolSetter(int i, bool caca)
 		this->_firstCoBool = caca;
 }
 
+bool	Client::getPassBool()
+{
+	return (this->_passBool);
+}
 void	Client::tryLogin()
 {
 	if (_userBool && _nickBool && _passBool)
@@ -627,7 +631,7 @@ void	Server::Parser(std::string cmd, Client *client) //isole les commandes avec 
 	int y = 0;
 	for (int i = 0; cmd[i]; i++)
 	{
-		if (cmd[i] == '\n' && cmd[i-1] == '\r')
+		if (cmd[i] == '\n')
 		{
 			CmdParser(cmd.substr(y, i - y), client); 
 			y = i + 1;
@@ -637,14 +641,8 @@ void	Server::Parser(std::string cmd, Client *client) //isole les commandes avec 
 
 void	Server::CmdParser(std::string cmd, Client *client)
 {
-	cmd = cmd.erase(cmd.size() - 1);
-	//std::cout << "PARSED CMD = " << cmd << std::endl;
-	if (cmd.find(' ') == std::string::npos) //each CMD must have at least 1 arg
-	{
-		const char *msg = "CMD is missing arguments \n";
-		throw (msg);
-
-	}
+	if (cmd[cmd.size() - 1] == '\r')
+		cmd = cmd.erase(cmd.size() - 1);
 	std::stringstream ss(cmd);
 	std::string word;
 	std::vector<std::string> cmdVec;
@@ -785,13 +783,24 @@ FuncPass::~FuncPass()
 void	FuncPass::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
 	(void)serv;
+	if (vec.size() < 2)
+	{
+		client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " PASS" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+		return ;
+	}
+	if (client->getPassBool())
+	{
+		client->sendMsg(":" + client->getId() + " 462 " + client->getNickname() + " :You may not reregister" + "\r", client->getFd());
+		return ;
+	}
 	if (vec[1] == assword)
 	{
 		client->boolSetter(0, true);
+		client->sendMsg("Password is correct", client->getFd());
 		client->tryLogin();
 	}
 	else
-		client->sendMsg(":" + client->getId() + " 464 " + client->getNickname() + " :Password incorrect" + "\r", client->getFd());
+		client->sendMsg(":" + client->getId() + " 464 " + client->getNickname() + " :Password incorrect" + "\r", client->getFd()); //PASSWDMISMATCH
 }
 //////////////// NICK ////////////////
 FuncNick::FuncNick(): Acommand("NICK")
@@ -847,7 +856,7 @@ void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	}
 	else //not first co
 	{
-		if (alrUsed) //issue ERR
+		if (alrUsed)
 			client->sendMsg(":" + client->getId() + " 433 " + client->getNickname() + " " + vec[1] + " :Nickname is already in use" + "\r", client->getFd()); //NICKNAMEINUSE
 		else
 		{
@@ -870,16 +879,22 @@ FuncUser::~FuncUser()
 void	FuncUser::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
 	(void)serv;
-	//check for 4 elements rentres sinon CMD not accepted
-	vec[4].erase(0, 1);
-	if (vec.size() > 4)
+	if (!client->getPassBool()) //check pass first
 	{
-		std::vector<std::string>::iterator it = vec.begin() + 5;
-		for(; it != vec.end(); it++)
-		{
-			vec[4] += " ";
-			vec[4] += *it;
-		}
+		client->sendMsg("Enter PASS first", client->getFd());
+		return ;
+	}
+	if (vec.size() < 5)
+	{
+		client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " JOIN" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+		return ;
+	}
+	std::vector<std::string>::iterator it = vec.begin() + 5;
+	vec[4].erase(0, 1);
+	for(; it != vec.end(); it++)
+	{
+		vec[4] += " ";
+		vec[4] += *it;
 	}
 
 	client->stringSetter(1, vec[1]);
@@ -940,7 +955,16 @@ std::string	FuncJoin::stringOfUsers(Channel *chan) const
 void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
 	if (vec.size() < 2)
+	{
 			client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " JOIN" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+			return ;
+	}
+
+	if (vec[1][0] != '#')
+	{
+		client->sendMsg(":" + client->getId() + " 476 " + client->getNickname() + " " + vec[1] + " :Incorrect format" + "\r", client->getFd()); //BADCHANMASK
+		return ;
+	}
 
 	Channel *chanPtr = serv->findChannel(vec[1]);
 	std::string password;
@@ -1017,7 +1041,8 @@ void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> ve
 {
 	Channel	*chanPtr;
 	Client	*target;
-	vec[2].erase(0,1); //erase le ':'
+	if (vec[2][0] == ':')
+		vec[2].erase(0,1); //erase le ':'
 	std::string msg = createMsg(vec); 
 	if (vec[1].find('#') != std::string::npos) //msging in channel
 	{
@@ -1059,7 +1084,6 @@ FuncQuit::~FuncQuit()
 void	FuncQuit::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
 	(void)vec;
-	(void)client;
 	if (serv->getChannelMap().empty())
 		return ;
 
@@ -1380,7 +1404,7 @@ void	FuncInvite::exec(Server *serv, Client *client, std::vector<std::string> vec
 	if (!chanPtr->isInvited(target))
 		chanPtr->addInvite(target);
 }
-//some RPLs should be sent not only on client's screen but also channel screen but only visible to client.
-//corriger le critical when joining channel -> It might be problem avec ordi -> when connect to liberachat hsotname problem aswell
+//some RPLs should be sent not only on client's screen but also channel screen but only visible to client. who defuq knows how to do that, not me
+//corriger le critical when joining channel -> It might be problem avec ordi -> when connect to liberachat hsotname problem aswell, so not my problem 
 //should be possible to JOIN multiple channel at once (as k Brandon if it can be restricted)
 //need to do faster deconnection
