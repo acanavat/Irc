@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/24 18:08:31 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/27 12:02:33 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -103,11 +103,32 @@ void	Client::tryLogin()
 	}
 }
 
+bool Client::isLogged()
+{
+	if (_passBool && _userBool && _nickBool)
+		return (true);
+	return (false);
+}
+
 int	Client::isFirstCo()
 {
 	if (_firstCoBool)
 		return (1);
 	return (0);
+}
+
+void Client::resetLogin()
+{
+	boolSetter(0, false);
+	boolSetter(1, false);
+	boolSetter(2, false);
+	boolSetter(3, true);
+	stringSetter(0, "default");
+	stringSetter(1, "default");
+	stringSetter(2, "default");
+	stringSetter(3, "default");
+	stringSetter(4, "default");
+	stringSetter(5, "default");
 }
 
 int Client::getFd() const
@@ -556,6 +577,9 @@ int main(int argc, char **argv)
 					else if (n == 0) //if (n == 0) //deco client
 					{
 						int fdeco = (*it).fd;
+						std::vector<std::string> vecc;
+						vecc.push_back("QUIT");
+						server.whichCmd(vecc, client_map[(*it).fd]);
 						server.removeFromChans(fdeco);
 						close(fdeco);
 						delete server.getClientMap()[fdeco];
@@ -712,7 +736,10 @@ void	Server::removeFromChans(int fd)
 		Channel *chanPtr = it->second;
 
 		if (chanPtr->findClient(client->getNickname()))
+		{
+			chanPtr->removeClientoperator(client);
 			chanPtr->removeClient(client);
+		}
 	}
 }
 
@@ -829,6 +856,11 @@ void	FuncNick::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	bool alrUsed = false;
 	std::map<int, Client*> clientMap = serv->getClientMap();
 	std::map<int, Client*>::iterator it = clientMap.begin();
+	if (!client->getPassBool()) //check pass first
+	{
+		client->sendMsg("Enter PASS first", client->getFd());
+		return ;
+	}
 	if (nickParser(vec[1]))
 	{
 		client->sendMsg(":" + client->getId() + " 432 " + client->getNickname() + " " + vec[1] + " :Erroneus nickname" + "\r", client->getFd());
@@ -954,6 +986,11 @@ std::string	FuncJoin::stringOfUsers(Channel *chan) const
 
 void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
+	if (!client->isLogged())
+	{
+		client->sendMsg("You must login first, using PASS USER NICK functions.", client->getFd());
+		return ;
+	}
 	if (vec.size() < 2)
 	{
 			client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " JOIN" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
@@ -1041,6 +1078,16 @@ void	FuncPrivMsg::exec(Server *serv, Client *client, std::vector<std::string> ve
 {
 	Channel	*chanPtr;
 	Client	*target;
+	if (!client->isLogged())
+	{
+		client->sendMsg("You must login first, using PASS USER NICK functions.", client->getFd());
+		return ;
+	}
+	if (vec.size() < 3)
+	{
+		client->sendMsg("Cannot send empty message. Try again.", client->getFd());
+		return ;
+	}
 	if (vec[2][0] == ':')
 		vec[2].erase(0,1); //erase le ':'
 	std::string msg = createMsg(vec); 
@@ -1083,7 +1130,6 @@ FuncQuit::~FuncQuit()
 
 void	FuncQuit::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
-	(void)vec;
 	if (serv->getChannelMap().empty())
 		return ;
 
@@ -1107,7 +1153,7 @@ void	FuncQuit::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 				tmp->msgChannel(client->getFd(), fullRep, 0);
 		}
 	}
-	
+	client->resetLogin();
 }
 
 ////////////// MODE /////////////////
@@ -1251,6 +1297,11 @@ bool	FuncMode::removeMode(Channel *chan, std::vector<std::string> vec, Client *c
 
 void	FuncMode::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
+	if (!client->isLogged())
+	{
+		client->sendMsg("You must login first, using PASS USER NICK functions.", client->getFd());
+		return ;
+	}
 	if (vec.size() < 2)
 		client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " MODE" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
 	if (vec[1].at(0) != '#' && vec[1].compare(client->getNickname()) == 0) //if mode with self nick is used
@@ -1310,6 +1361,11 @@ FuncTopic::~FuncTopic()
 
 void	FuncTopic::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
+	if (!client->isLogged())
+	{
+		client->sendMsg("You must login first, using PASS USER NICK functions.", client->getFd());
+		return ;
+	}
 	if (vec.size() < 2)
 	{
 		client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " TOPIC" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
@@ -1365,6 +1421,11 @@ FuncInvite::~FuncInvite()
 
 void	FuncInvite::exec(Server *serv, Client *client, std::vector<std::string> vec) const
 {
+	if (!client->isLogged())
+	{
+		client->sendMsg("You must login first, using PASS USER NICK functions.", client->getFd());
+		return ;
+	}
 	if (vec.size() < 3)
 	{
 		client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " INVITE" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS

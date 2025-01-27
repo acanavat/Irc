@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/24 13:37:02 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/27 11:56:11 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,7 +64,9 @@ class Client
 	void	tryLogin();
 	void	boolSetter(int i, bool caca); //0=pass, 1=nick, 2=user 3=first co
 	void	stringSetter(int i, std::string neww); //0=nick, 1=user, 2=mode1, 3=mode2, 4=realname, 5=id
+	void	resetLogin();
 	int		isFirstCo();
+	bool	isLogged();
 	bool	getPassBool();
 
 	private :
