@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/27 12:02:33 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/27 12:51:12 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -618,6 +618,7 @@ Server::Server() //Toute les COMMANDES a gerer = sous forme de CLASS in here ari
 	this->_cmd.push_back(new FuncMode());
 	this->_cmd.push_back(new FuncTopic());
 	this->_cmd.push_back(new FuncInvite());
+	this->_cmd.push_back(new FuncKick());
 }
 
 Server::~Server()
@@ -1465,6 +1466,69 @@ void	FuncInvite::exec(Server *serv, Client *client, std::vector<std::string> vec
 	if (!chanPtr->isInvited(target))
 		chanPtr->addInvite(target);
 }
+
+//////////////// KICK ///////////////////
+FuncKick::FuncKick(): Acommand("KICK")
+{
+}
+
+FuncKick::~FuncKick()
+{
+}
+
+std::string	FuncKick::createMsg(std::vector<std::string> vec) const
+{
+	std::string ret;
+	std::vector<std::string>::iterator it = vec.begin() + 3;
+	for (; it != vec.end(); it++)
+	{
+		ret += (*it);
+		if (it != vec.end())
+			ret += " ";
+	}
+	return (ret);
+}
+
+void	FuncKick::exec(Server *serv, Client *client, std::vector<std::string> vec) const
+{
+	if (vec.size() < 4)
+	{
+		client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " KICK" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+		return ;
+	}
+	Channel *chanPtr = serv->findChannel(vec[1]);
+
+	if (!chanPtr)
+	{
+		client->sendMsg(":" + client->getId() + " 403 " + client->getNickname() + " " + vec[1] + " :No such channel" + "\r", client->getFd()); //NOSUCHCHANNEL
+		return ;
+	}
+	if (!chanPtr->isOp(client->getFd()))
+	{
+		client->sendMsg(":" + client->getId() + " 482 " + client->getNickname() + " " + chanPtr->getShortname() + " :You're not channel operator" + "\r", client->getFd()); //CHANOPRIVSNEEDED
+		return ;
+	}
+
+	Client *clientPtr = serv->findClient(vec[2], 0);
+	if (!clientPtr)
+	{
+		client->sendMsg(":" + client->getId() + " 401 " + client->getNickname() + " " + vec[2] + " :No such nick" + "\r", client->getFd()); //NOSUCHNICK
+		return ;
+	}
+	if (!chanPtr->findClient(vec[2]))
+	{
+		client->sendMsg(":" + client->getId() + " 441 " + client->getNickname() + " " + chanPtr->getShortname() + " " + vec[2] + " :They aren't on that channel" + "\r", client->getFd()); //USERNOTINCHANNEL
+		return ;
+	}
+
+	std::string	msg = createMsg(vec);
+
+	chanPtr->msgChannel(client->getFd(), ":" + client->getId() + " KICK " + chanPtr->getShortname() + " " + clientPtr->getNickname() + " :" + msg + "\r", 0); //KICKING
+
+	chanPtr->removeClient(clientPtr);
+	chanPtr->removeClientoperator(clientPtr);
+}
+
 //some RPLs should be sent not only on client's screen but also channel screen but only visible to client. who defuq knows how to do that, not me
 //corriger le critical when joining channel -> It might be problem avec ordi -> when connect to liberachat hsotname problem aswell, so not my problem 
 //should be possible to JOIN multiple channel at once (as k Brandon if it can be restricted)

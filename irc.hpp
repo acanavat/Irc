@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/30 15:56:32 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/27 11:56:11 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/01/27 12:47:50 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -165,7 +165,7 @@ class	Server
 	void	Parser(std::string cmd, Client *client);
 	void	whichCmd(std::vector<std::string> vec, Client *client);
 	Channel	*findChannel(std::string name);
-	Client	*findClient(std::string name, int fd);
+	Client	*findClient(std::string name, int fd); //find by name (fd = 0) or by fd;
 	void	removeFromChans(int fd);
 	void	removeEmptyChans();
 	void	printClients();
@@ -284,7 +284,6 @@ class	FuncMode : public Acommand
 	bool	addMode(Channel *chan, std::vector<std::string> vec, Client *client) const;
 	bool	removeMode(Channel *chan, std::vector<std::string> vec, Client *client) const;
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
-	//addMode and removeMode functions (different than those in Channel
 };
 
 class	FuncTopic : public Acommand
@@ -305,5 +304,16 @@ class	FuncInvite : public Acommand
 	~FuncInvite();
 
 	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+};
+
+class FuncKick : public Acommand
+{
+	private:
+	public:
+	FuncKick();
+	~FuncKick();
+
+	void	exec(Server *serv, Client *client, std::vector<std::string> vec) const;
+	std::string createMsg(std::vector<std::string>) const;
 };
 #endif
