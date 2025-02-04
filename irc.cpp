@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/01/27 12:51:12 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/02/04 16:38:10 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1003,7 +1003,7 @@ void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 		client->sendMsg(":" + client->getId() + " 476 " + client->getNickname() + " " + vec[1] + " :Incorrect format" + "\r", client->getFd()); //BADCHANMASK
 		return ;
 	}
-
+	
 	Channel *chanPtr = serv->findChannel(vec[1]);
 	std::string password;
 
@@ -1028,6 +1028,11 @@ void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	}
 	else
 	{
+		if (chanPtr->findClient(client->getNickname()))
+		{
+			client->sendMsg("ERROR: You are already on that channel.", client->getFd());
+			return ;
+		}
 		if (chanPtr->checkMode('k') && password != chanPtr->getMdp()) //password
 		{
 			client->sendMsg(":" + client->getId() + " 475 " + client->getNickname() + " " + chanPtr->getShortname() + " :Cannot join channel (+k)" + "\r", client->getFd());
@@ -1040,6 +1045,11 @@ void	FuncJoin::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 				client->sendMsg(":" + client->getId() + " 471 " + client->getNickname() + " " + chanPtr->getShortname() + " :Cannot join channel (+l)" + "\r", client->getFd());
 				return ;
 			}
+		}
+		if (chanPtr->checkMode('i') && !chanPtr->isInvited(client)) //invite only
+		{
+				client->sendMsg(client->getId() + " 473 " + client->getNickname() + " " + chanPtr->getShortname() + " :Cannot join channel (+i)" + "\r", client->getFd());
+				return;
 		}
 	}
 	chanPtr->addClientlist(client); //add client to the clientlist)
@@ -1370,6 +1380,7 @@ void	FuncTopic::exec(Server *serv, Client *client, std::vector<std::string> vec)
 	if (vec.size() < 2)
 	{
 		client->sendMsg(":" + client->getId() + " 461 " + client->getNickname() + " TOPIC" + " :Not enough parameters" + "\r", client->getFd()); //NOTENOUGHPARAMS
+		return ;
 	}
 
 	Channel *chanPtr = serv->findChannel(vec[1]);
@@ -1483,7 +1494,7 @@ std::string	FuncKick::createMsg(std::vector<std::string> vec) const
 	for (; it != vec.end(); it++)
 	{
 		ret += (*it);
-		if (it != vec.end())
+		if (it != vec.end() - 1)
 			ret += " ";
 	}
 	return (ret);
@@ -1529,7 +1540,5 @@ void	FuncKick::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	chanPtr->removeClientoperator(clientPtr);
 }
 
-//some RPLs should be sent not only on client's screen but also channel screen but only visible to client. who defuq knows how to do that, not me
 //corriger le critical when joining channel -> It might be problem avec ordi -> when connect to liberachat hsotname problem aswell, so not my problem 
 //should be possible to JOIN multiple channel at once (as k Brandon if it can be restricted)
-//need to do faster deconnection
