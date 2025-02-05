@@ -6,7 +6,7 @@
 #    By: acanavat <marvin@42.fr>                    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/02/08 13:29:16 by acanavat          #+#    #+#              #
-#    Updated: 2024/09/12 17:14:31 by acanavat         ###   ########.fr        #
+#    Updated: 2025/02/05 16:28:03 by rbulanad         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -53,4 +53,3 @@ leaks:
 	make MAKELEAKS=1 re
 
 .PHONY: all clean fclean re
-
