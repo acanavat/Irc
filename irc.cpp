@@ -6,7 +6,7 @@
 /*   By: acanavat <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/12 17:14:07 by acanavat          #+#    #+#             */
-/*   Updated: 2025/02/04 16:38:10 by rbulanad         ###   ########.fr       */
+/*   Updated: 2025/02/05 15:53:29 by rbulanad         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -457,15 +457,6 @@ std::string	Channel::toString(int i)
 	ss << i;
 	return (ss.str());
 }
-/*
-void printChannel(std::map<std::string, Channel*> &channel_list)
-{
-	for(std::map<std::string, Channel*>::iterator it = channel_list.begin(); it != channel_list.end(); it++)
-	{
-		std::cout << "Server name : " << (*it).first << std::endl;
-	}
-}
-*/
 
 Channel *getChannel(std::string name, std::map<std::string, Channel*> *channel_list)
 {
@@ -1539,6 +1530,3 @@ void	FuncKick::exec(Server *serv, Client *client, std::vector<std::string> vec) 
 	chanPtr->removeClient(clientPtr);
 	chanPtr->removeClientoperator(clientPtr);
 }
-
-//corriger le critical when joining channel -> It might be problem avec ordi -> when connect to liberachat hsotname problem aswell, so not my problem 
-//should be possible to JOIN multiple channel at once (as k Brandon if it can be restricted)
