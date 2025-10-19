@@ -36,7 +36,7 @@ irssi
 
 Si ton programme lance un serveur IRC local écoutant sur le port 6667, tu peux te connecter ainsi :
 
- /connect 127.0.0.1 6667
+   /connect 127.0.0.1 6667
 
 3. Rejoindre un canal IRC
 /join #test
