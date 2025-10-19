@@ -36,7 +36,7 @@ irssi
 
 Si ton programme lance un serveur IRC local écoutant sur le port 6667, tu peux te connecter ainsi :
 
-   /connect 127.0.0.1 6667
+/connect 127.0.0.1 6667
 
 3. Rejoindre un canal IRC
 /join #test
@@ -48,6 +48,7 @@ Si ton programme lance un serveur IRC local écoutant sur le port 6667, tu peux 
 Cela te permettra de voir comment ton code interagit avec un client IRC réel comme irssi.
 
 🧠 Structure du projet
+
 ├── irc.hpp       # Déclaration des classes et fonctions IRC
 
 ├── irc.cpp       # Implémentation de la logique IRC (connexion, communication, etc.)
@@ -57,6 +58,7 @@ Cela te permettra de voir comment ton code interagit avec un client IRC réel co
 └── README.md     # Description du projet
 
 🌏 Meta:
+
 rbulanad : rbulanad@student.42nice.fr
 
 acanavat : acanavat@student.42nice.fr
