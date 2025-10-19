@@ -58,4 +58,5 @@ Cela te permettra de voir comment ton code interagit avec un client IRC réel co
 
 🌏 Meta:
 rbulanad : rbulanad@student.42nice.fr
+
 acanavat : acanavat@student.42nice.fr
