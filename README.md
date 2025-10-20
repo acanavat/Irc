@@ -60,8 +60,11 @@ Cela te permettra d’observer comment ton code interagit avec un client IRC ré
 ## 🧠 Structure du projet
 
 ├── irc.hpp # Déclaration des classes et fonctions IRC
+
 ├── irc.cpp # Implémentation de la logique IRC (connexion, communication, etc.)
+
 ├── Makefile # Compilation simple
+
 └── README.md # Description du projet
 
 ---
